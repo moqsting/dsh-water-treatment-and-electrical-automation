@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 大文件/二进制：仓库不含离线依赖与插件包（zip 交付包含；README 说明获取方式）
+pydeps/
+plugins/vendor/
+
+# 用户本机配置（不随仓库）
+config/ui-workspace.json
+config/cad_env.json
+
+# 运行产物（保留空目录结构）
+reports/tender/*
+reports/ui/*
+!reports/tender/.gitkeep
+!reports/ui/.gitkeep
+reports/smoke/*.xlsx
+!reports/smoke/测试PID.dxf
+
+# 系统
+.DS_Store
+Thumbs.db

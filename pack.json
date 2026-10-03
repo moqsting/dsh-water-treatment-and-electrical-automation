@@ -1,0 +1,28 @@
+{
+  "name": "water-treatment-and-electrical-automation",
+  "version": "1.0.0",
+  "author": "moqsting",
+  "description": "水处理与电气自动化工程师 DSH 整合包：PLC 编程辅助、投标报价清单、招标与价格查询、CAD 识图、工艺/电气计算、规范查询、本地工作台与招标监控自动化",
+  "type": "dsh-pack",
+  "dshVersion": "0.2.0-rc.2",
+  "components": {
+    "skills": "9 个对话技能（skills/，安装后注册到 DSH 技能目录）",
+    "workbench": "本地 Web 工作台（ui/，8 个工具一键运行 + 文件浏览/预览）",
+    "scripts": "Python 工具链（scripts/，runpy.cmd 统一入口）",
+    "offline-deps": "pydeps/（19 个固定版本依赖，bootstrap 离线安装）",
+    "templates": "templates/（5 个 Excel 模板）",
+    "data": "data/（载流量/工艺参数/图例库/规范清单）",
+    "plugins": "plugins/（vendor 内含 dsh-univer-office 0.3.6 tgz，可离线安装）",
+    "automation": "招标监控定时任务（setup/import-into-dsh.md，DSH 内一键导入）",
+    "docs": "docs/（用户文档；docs/dev/ 为开发者文档）"
+  },
+  "setup": {
+    "oneClick": "setup/install.ps1（依赖/自检/技能安装/桌面快捷方式）",
+    "automationImport": "setup/import-into-dsh.md（DSH 对话说“导入整合包自动化”）"
+  },
+  "requires": {
+    "os": "windows",
+    "python": ">=3.12（含 py 启动器）",
+    "network": "首次依赖安装需联网（清华镜像）"
+  }
+}
