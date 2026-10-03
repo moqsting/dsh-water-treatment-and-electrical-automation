@@ -6,8 +6,8 @@
  *   POST /api/workbench/stop   → 调工作台 /api/shutdown 优雅退出，返回 { ok }
  * 工作台目录与 pythonw 路径从本包内 workbench-path.json 读取（部署脚本写入）。
  */
-import { spawn } from 'node:child_process'
-import { readFileSync, existsSync } from 'node:fs'
+import { spawn, execFile } from 'node:child_process'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -46,10 +46,41 @@ function uiDir() {
   return null
 }
 
-function pythonw() {
+/** 探测可用的 pythonw.exe 绝对路径（GUI 子系统，不弹控制台）；找不到返回 null。 */
+async function resolvePythonw() {
   const cfg = readConfig()
-  if (cfg.pythonw) return cfg.pythonw
-  return process.env.PYTHONW_EXE || 'pythonw'
+  if (cfg.pythonw && cfg.pythonw.toLowerCase().endsWith('.exe') && existsSync(cfg.pythonw)) {
+    return cfg.pythonw
+  }
+  const env = process.env.PYTHONW_EXE
+  if (env && existsSync(env)) return env
+  // 扫描 %LOCALAPPDATA%\Programs\Python\<版本>\pythonw.exe（新版本优先）
+  const local = process.env.LOCALAPPDATA
+  if (local) {
+    const base = join(local, 'Programs', 'Python')
+    try {
+      if (existsSync(base)) {
+        const dirs = readdirSync(base).sort().reverse()
+        for (const d of dirs) {
+          const c = join(base, d, 'pythonw.exe')
+          if (existsSync(c)) return c
+        }
+      }
+    } catch { /* 忽略扫描失败 */ }
+  }
+  // 通过 py 启动器推导出 pythonw 同目录路径
+  try {
+    const exe = await new Promise((resolve) => {
+      execFile('py', ['-3', '-c', 'import sys;print(sys.executable)'],
+        { windowsHide: true },
+        (err, stdout) => resolve(err ? null : String(stdout).trim()))
+    })
+    if (exe && exe.toLowerCase().endsWith('python.exe')) {
+      const w = exe.slice(0, -'python.exe'.length) + 'pythonw.exe'
+      if (existsSync(w)) return w
+    }
+  } catch { /* 忽略 */ }
+  return null
 }
 
 export const name = 'dsh-open-workbench'
@@ -117,13 +148,18 @@ export function apply(ctx) {
         const already = await findRunning()
         if (already) { sendJson(res, 200, { ok: true, port: already }); return }
         const dir = uiDir()
-        if (!dir) { sendJson(res, 500, { ok: false, error: '工作台目录未配置（workbench-path.json 缺 uiDir）' }); return }
+        if (!dir) { sendJson(res, 500, { ok: false, error: '未找到工作台（$DSH_HOME/wta/ui），请确认整合包已完整导入' }); return }
+        const pyw = await resolvePythonw()
+        if (!pyw) { sendJson(res, 500, { ok: false, error: '未找到 Python（pythonw.exe）。请先安装 Python 3.12（勾选 py launcher）后重试。' }); return }
         const portFile = join(tmpdir(), `dsh-workbench-${process.pid}-${Date.now()}.port`)
         try {
-          serverProc = spawn(pythonw(), [join(dir, 'server.py'), '--port-file', portFile], {
+          serverProc = spawn(pyw, [join(dir, 'server.py'), '--port-file', portFile], {
             detached: true,
             stdio: 'ignore',
+            windowsHide: true,
           })
+          // 关键：捕获 spawn 失败（如可执行文件不存在），否则未处理异常会崩掉宿主 DSH
+          serverProc.on('error', () => { serverProc = null })
           serverProc.unref()
           let port = null
           for (let i = 0; i < 60; i++) {
