@@ -1,37 +1,18 @@
 @echo off
 rem ============================================================
-rem  ???????????????
-rem  ??????????????618 ?????????????????????????rem  ?????127.0.0.1?????????????rem  ???????????????????rem ============================================================
+rem  water-treatment-and-electrical-automation - workbench
+rem  Console mode: server log is shown below.
+rem  Close this window (or press Ctrl+C) to stop the service.
+rem  Recommended: double-click the desktop shortcut instead.
+rem ============================================================
 chcp 65001 >nul
-setlocal EnableDelayedExpansion
-set "UI_ROOT=%~dp0"
-set "TMPBASE=%TEMP%\dsh-ipack-ui-%RANDOM%"
-set "PORT_FILE=%TMPBASE%.port"
-set "PID_FILE=%TMPBASE%.pid"
-
-start /b py -3 "%UI_ROOT%server.py" --port-file "%PORT_FILE%" --pid-file "%PID_FILE%" >nul 2>&1
-
-set "PORT="
-for /l %%i in (1,1,50) do (
-  if exist "%PORT_FILE%" (
-    set /p PORT=<"%PORT_FILE%"
-    goto :opened
-  )
-  timeout /t 1 /nobreak >nul
-)
-echo ?????????????????Python 3??y ???????????del "%PORT_FILE%" "%PID_FILE%" >nul 2>&1
-exit /b 1
-
-:opened
-start "" "http://127.0.0.1:%PORT%"
+setlocal
+title water-treatment-and-electrical-automation workbench
+echo ==========================================================
+echo   water-treatment-and-electrical-automation workbench
+echo ==========================================================
+echo   The browser will open automatically.
+echo   Close this window to stop the service.
 echo.
-echo  ???????????ttp://127.0.0.1:%PORT%
-echo  ?????????????????????????????echo.
-pause >nul
-
-if exist "%PID_FILE%" (
-  set /p PID=<"%PID_FILE%"
-  taskkill /f /pid !PID! >nul 2>&1
-)
-del "%PORT_FILE%" "%PID_FILE%" >nul 2>&1
+py -3 "%~dp0server.py" --open
 endlocal

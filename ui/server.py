@@ -705,6 +705,7 @@ def main():
     port_file = None
     pid_file = None
     port = None
+    open_browser = "--open" in argv
     if "--port-file" in argv:
         i = argv.index("--port-file") + 1
         if i < len(argv):
@@ -727,6 +728,12 @@ def main():
     print(f"工作台已启动：http://127.0.0.1:{port}  （仅本机可访问，Ctrl+C 停止）")
     print(f"工作区：{WORKSPACE_ROOT}")
     print(f"整合包：{PACK_ROOT}")
+    if open_browser:
+        try:
+            import webbrowser
+            webbrowser.open(f"http://127.0.0.1:{port}")
+        except Exception:  # noqa: BLE001
+            pass
     try:
         server.serve_forever()
     except KeyboardInterrupt:

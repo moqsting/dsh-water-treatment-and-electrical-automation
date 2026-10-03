@@ -50,12 +50,14 @@ water-treatment-and-electrical-automation\
 ## 三、快速上手（第一次使用）
 
 ### 3.0 一键部署（推荐）
-把整个整合包目录拷贝到目标机后，在整合包根目录运行：
+把整个整合包目录拷贝到目标机后，**双击 `setup\一键安装.cmd`**（推荐，它会自动探测你的 DSH 实例目录；探测不到时会提示你输入），或在整合包根目录运行：
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File setup\install.ps1
 ```
 自动完成：Python 检查 → 依赖安装 → 整体自检 → 9 个技能安装（复制到 DSH 技能目录）→ 桌面快捷方式。
 然后**在 DSH 对话中说"导入整合包自动化"**，完成招标监控定时任务导入（详见 setup\import-into-dsh.md）。
+
+> 注意：DSHL（桌面启动器）的"手动安装整合包"入口要求 `.dspack` 文件或含 `distribution.json` 的压缩包（DSH 生态的功能包格式），本整合包当前交付形态为**脚本部署**（双击 `setup\一键安装.cmd`），不支持直接用 DSHL 的该入口安装。
 
 ### 3.1 手动部署（或检查环境）
 - 命令行运行 `py -3 --version`，应显示 Python 3.12.x（Windows 自带的 py 启动器即可，不需要把 python 加进 PATH）。
