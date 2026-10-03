@@ -143,11 +143,36 @@ def get_allowed_roots():
     return roots
 
 
+def active_workspace():
+    """当前工作区根：用户自定义工作区（若已配置），否则整合包父目录。"""
+    return configured_workspace() or WORKSPACE_ROOT
+
+
 def save_workspace(path_str):
     WS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     WS_CONFIG_PATH.write_text(
         json.dumps({"path": str(path_str)}, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+
+
+def pick_directory():
+    """弹 Windows 原生目录选择对话框，返回所选路径；取消返回 None。"""
+    ps = (
+        "Add-Type -AssemblyName System.Windows.Forms;"
+        "$d = New-Object System.Windows.Forms.FolderBrowserDialog;"
+        "$d.Description = '选择工作区目录';"
+        "$d.ShowNewFolderButton = $true;"
+        "if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $d.SelectedPath }"
+    )
+    try:
+        r = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300,
+        )
+        path = (r.stdout or "").strip()
+        return path or None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def is_device_name(name: str) -> bool:
@@ -167,11 +192,19 @@ def safe_resolve(request_path: str):
     if not isinstance(request_path, str):
         return None
     if request_path == "":
-        return WORKSPACE_ROOT  # 空路径 = 工作区根（合法默认值）
+        return active_workspace()  # 空路径 = 当前工作区根（用户自定义优先）
     raw = request_path.replace("\\", "/").strip()
     if raw.startswith("//") or raw.startswith("\\\\"):
         return None
-    if re.match(r"^[a-zA-Z]:", raw):
+    # 绝对路径（Windows 盘符 / POSIX 根）——仅在白名单目录内接受
+    if re.match(r"^[a-zA-Z]:", raw) or raw.startswith("/"):
+        try:
+            resolved = Path(raw).resolve()
+        except OSError:
+            return None
+        for root in get_allowed_roots():
+            if is_within(resolved, root):
+                return resolved
         return None
     decoded = unquote(raw)
     parts = [p for p in decoded.split("/") if p not in ("", ".")]
@@ -185,9 +218,10 @@ def safe_resolve(request_path: str):
 
 
 def rel_of(path: Path) -> str:
-    """绝对路径 → 相对工作区根的斜杠路径（前端展示用）。"""
+    """绝对路径 → 相对当前工作区根的斜杠路径；不在工作区下则返回绝对路径。"""
+    ws = active_workspace()
     try:
-        rel = path.relative_to(WORKSPACE_ROOT)
+        rel = path.relative_to(ws)
         return rel.as_posix()
     except ValueError:
         return path.as_posix()
@@ -629,6 +663,11 @@ class UiHandler(BaseHTTPRequestHandler):
         except (UnicodeDecodeError, json.JSONDecodeError):
             return _json_response(self, 400, {"error": "bad json"})
 
+        if path == "/api/workspace/pick":
+            picked = pick_directory()
+            if picked:
+                return _json_response(self, 200, {"ok": True, "path": picked})
+            return _json_response(self, 200, {"ok": False, "path": None})
         if path == "/api/workspace":
             raw = payload.get("path")
             if not isinstance(raw, str) or raw.strip() == "":

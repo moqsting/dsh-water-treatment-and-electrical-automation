@@ -972,11 +972,8 @@ async function initSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path: p }),
       });
-      workspace = j.workspace;
-      wsLabel.textContent = "工作区路径：" + j.workspace;
-      wsLabel.title = j.workspace;
+      syncWorkspaceUI(j.workspace);
       wsInput.value = "";
-      $("#workspace-display").textContent = "工作区：" + j.workspace;
       toast("工作区已更改", "success");
     } catch (e) {
       toast(errorToUser(e.message || e.payload?.hint || "更改失败"), "error");
@@ -1102,6 +1099,16 @@ function setWorkspaceDisplay(ws) {
   el.title = ws || "";
 }
 
+/** 同步工作区到顶栏与设置页（避免设置页缓存旧值）。 */
+function syncWorkspaceUI(ws) {
+  setWorkspaceDisplay(ws);
+  const lbl = document.getElementById("settings-ws-label");
+  if (lbl) {
+    lbl.textContent = "工作区路径：" + (ws || "未知");
+    lbl.title = ws || "";
+  }
+}
+
 async function loadWorkspace() {
   try {
     const j = await api("/api/workspace");
@@ -1136,6 +1143,8 @@ function showWorkspacePicker() {
   desc.className = "hint";
   desc.textContent = "请选择一个用于存放你的项目文件（报价表、图纸、报告等）的本地目录。首次设置后，工作台将把该目录作为你的工作区，后续可在「设置」页修改。";
 
+  const fieldRow = document.createElement("div");
+  fieldRow.className = "field-row";
   const input = document.createElement("input");
   input.className = "input";
   input.type = "text";
@@ -1144,6 +1153,25 @@ function showWorkspacePicker() {
   input.addEventListener("keydown", (ev) => {
     if (ev.key === "Enter") saveBtn.click();
   });
+  fieldRow.appendChild(input);
+
+  const browseBtn = document.createElement("button");
+  browseBtn.className = "btn btn-sm";
+  browseBtn.type = "button";
+  browseBtn.textContent = "浏览…";
+  browseBtn.addEventListener("click", async () => {
+    try {
+      const j = await api("/api/workspace/pick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (j.ok && j.path) input.value = j.path;
+    } catch (e) {
+      toast(errorToUser(e.message || "打开目录选择器失败"), "error");
+    }
+  });
+  fieldRow.appendChild(browseBtn);
 
   const actions = document.createElement("div");
   actions.className = "card-actions";
@@ -1160,7 +1188,7 @@ function showWorkspacePicker() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path: p }),
       });
-      setWorkspaceDisplay(j.workspace);
+      syncWorkspaceUI(j.workspace);
       overlay.remove();
       toast("工作区已设置", "success");
     } catch (e) {
@@ -1180,7 +1208,7 @@ function showWorkspacePicker() {
   actions.appendChild(laterBtn);
   card.appendChild(title);
   card.appendChild(desc);
-  card.appendChild(input);
+  card.appendChild(fieldRow);
   card.appendChild(actions);
   overlay.appendChild(card);
   document.body.appendChild(overlay);
