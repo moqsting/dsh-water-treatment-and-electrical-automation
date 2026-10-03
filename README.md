@@ -1,6 +1,6 @@
 # water-treatment-and-electrical-automation —— 水处理与电气自动化工程师整合包
 
-> 作者：moqsting（GitHub）｜ 仓库：https://github.com/moqsting/water-treatment-and-electrical-automation
+> 作者：moqsting（GitHub）｜ 仓库：https://github.com/moqsting/dsh-water-treatment-and-electrical-automation
 > 版本 v1.0 ｜ 适用：DSH 0.2.0-rc.2 + Windows + Python 3.12（`py` 启动器）
 > 本手册面向第一次使用的工程师，按顺序读一遍即可上手。
 
