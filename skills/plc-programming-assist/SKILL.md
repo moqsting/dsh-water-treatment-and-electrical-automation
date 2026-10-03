@@ -1,3 +1,7 @@
+---
+name: plc-programming-assist
+description: "水处理/电气自动化 PLC 程序编写辅助：控制逻辑、SCL/ST/梯形图代码、品牌地址映射、Modbus 联调。触发：编写 PLC 程序、功能块、点表生成程序框架。"
+---
 # PLC 程序开发辅助（水处理/电气自动化）
 
 ## 触发场景

@@ -1,3 +1,7 @@
+---
+name: open-workbench
+description: "打开整合包工作台的启动器技能：用户说“打开工作台”即启动本地服务并打开浏览器。仅启动本地 UI，不修改任何配置。"
+---
 # 打开工作台（water-treatment-and-electrical-automation）
 
 ## 触发场景

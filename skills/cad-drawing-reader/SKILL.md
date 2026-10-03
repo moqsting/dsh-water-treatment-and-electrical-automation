@@ -1,3 +1,7 @@
+---
+name: cad-drawing-reader
+description: "CAD 图纸识图：DWG/DXF 转换、设备与仪表位号提取、图例映射、OCR 兜底，输出带置信度的清单初稿。触发：读图纸、提取设备/仪表清单、核对点表。"
+---
 # CAD 识图（水处理 PID / 电气图）
 
 ## 触发场景

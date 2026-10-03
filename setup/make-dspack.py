@@ -48,10 +48,11 @@ def build_manifest(skill_dirs):
         "defaultProfile": PROFILE_NAME,
         "profiles": {
             PROFILE_NAME: {
-                "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"],
-                "dependencies": {},
+                "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-open-workbench"],
+                "dependencies": {"dsh-open-workbench": "file:open-workbench"},
             }
         },
+        "instructions": "AGENTS.md",
         "skills": [{"path": f"skills/{d.name}"} for d in skill_dirs],
     }
 
@@ -82,8 +83,8 @@ def self_check(manifest, zip_path):
         inner = [n for n in names if "/" in n]
         ok &= chk("dspack.json" in names and "manifest.json" in names, "ZIP 根含 dspack.json + manifest.json")
         ok &= chk(all(n.startswith("overrides/") for n in inner), "用户文件均在 overrides/ 内")
-        ok &= chk(all(n.startswith("overrides/skills/") for n in names if n.startswith("overrides/")),
-                  "dshhome 形态：overrides/ 按 $DSH_HOME 平铺 skills/")
+        ok &= chk(not any(n.startswith("overrides/home/") for n in names),
+                  "dshhome 形态：overrides/ 直接平铺（无 home/ 前缀，即 profile 形态误用）")
         ok &= chk(len([n for n in names if n.endswith("SKILL.md")]) == len(m.get("skills", [])),
                   f"技能文件数与 manifest.skills 一致（{len(m.get('skills', []))}）")
     return ok, lines
@@ -107,9 +108,21 @@ def main():
     with zipfile.ZipFile(dspack, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("dspack.json", '{"format":"dspack","version":3}')
         z.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
+        # 全局指令（instructions 字段指向 AGENTS.md）
+        agents = PACK_ROOT / "AGENTS.md"
+        if agents.is_file():
+            z.writestr("overrides/AGENTS.md", agents.read_text(encoding="utf-8"))
+        # 技能（overrides/skills/<name>/SKILL.md）
         for d in skill_dirs:
             z.writestr(f"overrides/skills/{d.name}/SKILL.md",
                        (d / "SKILL.md").read_text(encoding="utf-8"))
+        # 侧边栏按钮插件（本地 npm 包，挂到 profile，由 pnpm install 链接）
+        plugin_dir = PACK_ROOT / "plugins" / "open-workbench"
+        for f in ("package.json", "index.js", "client.js", "cordis.patch.yml"):
+            p = plugin_dir / f
+            if p.is_file():
+                z.writestr(f"overrides/profiles/{PROFILE_NAME}/open-workbench/{f}",
+                           p.read_text(encoding="utf-8"))
 
     ok, lines = self_check(manifest, dspack)
     print(f"输出：{dspack}  （{os.path.getsize(dspack)} 字节，{len(skill_dirs)} 个技能）")

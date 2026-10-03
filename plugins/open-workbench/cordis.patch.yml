@@ -1,0 +1,4 @@
+# dsh-open-workbench 自身的组合层：挂载 host 侧插件（client 侧 UI 由 dsh.client 声明自动加载）。
+- insert:
+    - id: open-workbench
+      name: dsh-open-workbench

@@ -1,3 +1,7 @@
+---
+name: fault-diagnosis
+description: "故障诊断纪律：五步法（Observation→Hypothesis→Verification→Action→Validation）、错误分类表、盲目重试限制、EPERM rename 专项排查。触发：工具错误、EPERM/EACCES/ENOENT、编码/语法/schema 错误、连续失败。"
+---
 # 故障诊断纪律（Observation → Hypothesis → Verification → Action → Validation）
 
 ## 触发场景
