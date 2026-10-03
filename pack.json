@@ -1,6 +1,6 @@
 {
   "name": "water-treatment-and-electrical-automation",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "moqsting",
   "repository": "https://github.com/moqsting/dsh-water-treatment-and-electrical-automation",
   "description": "水处理与电气自动化工程师 DSH 整合包：PLC 编程辅助、投标报价清单、招标与价格查询、CAD 识图、工艺/电气计算、规范查询、本地工作台（侧边栏一键启停）与招标监控自动化",

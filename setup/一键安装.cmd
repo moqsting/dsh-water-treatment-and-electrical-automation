@@ -2,10 +2,12 @@
 rem =====================================================================
 rem  water-treatment-and-electrical-automation - one-click installer
 rem  Double-click this file. It will:
-rem    1) detect your DSH instance directory (contains .dsh\ or skills\)
-rem    2) install offline python deps + run smoke test
-rem    3) copy the 9 skills into your DSH instance
-rem    4) create a desktop shortcut for the workbench
+rem    1) detect your DSH instance directory (contains skills\ or profiles\)
+rem    2) check Python 3.12 (offers winget install if missing)
+rem    3) install offline python deps (skipped when already bundled)
+rem    4) copy the 11 skills into your DSH instance
+rem    5) deploy the sidebar workbench-button plugin
+rem    6) create a desktop shortcut for the workbench
 rem  Optional: set DRY_RUN=1 to only print what would be executed.
 rem =====================================================================
 chcp 65001 >nul

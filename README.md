@@ -1,7 +1,7 @@
 # water-treatment-and-electrical-automation —— 水处理与电气自动化工程师整合包
 
 > 作者：moqsting（GitHub）｜ 仓库：https://github.com/moqsting/dsh-water-treatment-and-electrical-automation
-> 版本 v1.0 ｜ 适用：DSH 0.2.0-rc.2 + Windows + Python 3.12（`py` 启动器）
+> 版本 v1.2.1 ｜ 适用：DSH 0.2.0-rc.2 + Windows + **Python 3.12（含 `py` 启动器，必装前置）**
 > 本手册面向第一次使用的工程师，按顺序读一遍即可上手。
 
 ---
@@ -27,60 +27,84 @@
 ```
 water-treatment-and-electrical-automation\
 ├─ README.md                  ← 本手册
+├─ CHANGELOG.md               更新日志
 ├─ pack.json                  整合包自述清单（名称/版本/组件）
 ├─ setup\                     部署与导入脚本
-│   ├─ install.ps1            一键部署（依赖/自检/技能安装/桌面快捷方式）
+│   ├─ 一键安装.cmd           双击即装（自动探测 DSH 实例目录）
+│   ├─ install.ps1            部署脚本（Python 检查/依赖/自检/技能/插件/快捷方式）
+│   ├─ deploy-to-instance.py  CLI 部署（导入 + pnpm + 可选启动实例）
+│   ├─ make-dspack.py         生成 .dspack 整合包
 │   └─ import-into-dsh.md     DSH 内导入招标监控自动化（对话说"导入整合包自动化"）
-├─ ui\                        本地工作台（双击桌面快捷方式打开）
+├─ ui\                        本地工作台（侧边栏按钮或双击桌面快捷方式打开）
 │   ├─ start.cmd              启动入口（自动选端口 + 打开浏览器）
 │   ├─ server.py              本地服务（仅监听 127.0.0.1）
 │   ├─ static\                页面（工作台/工具/文件/资源/设置）
-│   └─ tests\                 自动化测试（43 项 API + 安全 + 渲染验证）
-├─ skills\                    9 个技能（<名称>\SKILL.md 结构）
+│   └─ tests\                 自动化测试
+├─ skills\                    11 个技能（<名称>\SKILL.md 结构）
 ├─ scripts\                   Python 工具脚本（runpy.cmd 是统一入口）
 ├─ templates\                 5 个 Excel 模板（投标报价/IO点表/设备清单/电缆清册/调试记录）
 ├─ data\                      行业参考数据（图例库/载流量表/工艺参数/规范清单）
 ├─ config\                    招标关键词、来源清单、CAD 路径记忆
 ├─ reports\                   产出目录（招标日报、冒烟测试结果）
-├─ pydeps\                    Python 依赖库（离线安装，见 3.2）
-├─ plugins\                   插件清单（vendor\ 内含可离线安装的 tgz）
+├─ pydeps\                    Python 依赖库（19 个包，离线内置）
+├─ plugins\                   插件（open-workbench 侧边栏按钮；vendor\ 含可离线安装的 tgz）
+├─ release\                   生成物（.dspack 整合包 + .sha256）
 └─ docs\                      用户文档（数据契约）；dev\ 为开发者文档（基线/审查报告）
 ```
 
 ## 三、快速上手（第一次使用）
 
-### 3.0 一键部署（推荐）
-把整个整合包目录拷贝到目标机后，**双击 `setup\一键安装.cmd`**（推荐，它会自动探测你的 DSH 实例目录；探测不到时会提示你输入），或在整合包根目录运行：
+### 3.0 前置：Python 3.12（必装）
+
+本整合包的工作台是 Python 程序，**目标机必须已安装 Python 3.12（安装时勾选 `py launcher`）**。包内**不包含** Python 解释器。
+
+- 未安装时：`setup\一键安装.cmd` 会询问是否用 `winget` 自动安装；
+- 手动安装：https://www.python.org/downloads/ （勾选 "Add python.exe to PATH" 与 "py launcher"）。
+
+Python 库依赖（`pydeps\`，19 个包）已随包**离线内置**，无需联网。
+
+### 3.1 路线 A：DSHL 一键导入（推荐，最省事）
+
+把 **`release\water-treatment-and-electrical-automation-1.2.1.dspack`** 拖进 DSHL 的「手动安装整合包」入口即可。导入后自动就位：
+
+- 11 个技能 + `AGENTS.md` → `$DSH_HOME`
+- 工作台 + 工具链 + 离线依赖 → `$DSH_HOME\wta`
+- 侧边栏「工作台」按钮插件 → 挂到 `wet-automation` profile
+
+之后在 DSH 侧边栏点「工作台」按钮即可启动（首次会弹窗让你选择工作区目录）。
+
+### 3.2 路线 B：脚本部署（解压 zip 后）
+
+把整个整合包目录拷贝到目标机后，**双击 `setup\一键安装.cmd`**（自动探测 DSH 实例目录；探测不到会提示输入），或：
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File setup\install.ps1
 ```
-自动完成：Python 检查 → 依赖安装 → 整体自检 → 9 个技能安装（复制到 DSH 技能目录）→ 桌面快捷方式。
-然后**在 DSH 对话中说"导入整合包自动化"**，完成招标监控定时任务导入（详见 setup\import-into-dsh.md）。
+自动完成：Python 检查（缺失可 winget 引导安装）→ 离线依赖 → 整体自检 → 11 个技能安装 → 侧边栏插件部署 → 桌面快捷方式。
+最后**在 DSH 对话中说"导入整合包自动化"**完成招标监控定时任务导入（详见 setup\import-into-dsh.md）。
 
-> 注意：DSHL（桌面启动器）的"手动安装整合包"入口要求 `.dspack` 文件或含 `distribution.json` 的压缩包（DSH 生态的功能包格式），本整合包当前交付形态为**脚本部署**（双击 `setup\一键安装.cmd`），不支持直接用 DSHL 的该入口安装。
-
-### 3.1 手动部署（或检查环境）
+### 3.3 手动部署（或检查环境）
 - 命令行运行 `py -3 --version`，应显示 Python 3.12.x（Windows 自带的 py 启动器即可，不需要把 python 加进 PATH）。
 
-### 3.2 重建依赖（联网，一次即可，约 1~2 分钟）
+### 3.4 依赖说明（通常无需操作）
+依赖库已随包内置在 `pydeps\`（19 个固定版本包），**开箱即用、无需联网**。
+仅当 `pydeps\` 缺失或损坏时，才需联网重建：
 ```
 scripts\runpy.cmd scripts\bootstrap_libs.py
 ```
-- 作用：从清华镜像下载固定版本的依赖库到 `pydeps\`（openpyxl/pandas/ezdxf/pymodbus 等 19 个包）。
-- 看到 `完成：成功 19/19` 即成功。**换机器部署时先跑这条。**
+- 从清华镜像下载固定版本依赖到 `pydeps\`（openpyxl/pandas/ezdxf/pymodbus 等 19 个包）；看到 `完成：成功 19/19` 即成功。
 
-### 3.3 冒烟测试（确认一切正常）
+### 3.5 冒烟测试（确认一切正常）
 ```
 scripts\runpy.cmd scripts\smoke_test.py
 ```
 - 自动生成测试图纸和报价表并跑通全部链路，产物在 `reports\smoke\`。
 - 全部显示 `OK` 即就绪。
 
-### 3.4 开始使用
-- **对话式**：直接在 DSH 对话框里用中文提出任务即可（九项技能，见第四节）；
-- **工作台式**：双击桌面快捷方式（或 `ui\start.cmd`）打开本地工作台：8 个工具一键运行、文件浏览与预览（xlsx/docx/md/文本）、模板与数据直达、CAD 环境探测、招标报告查看、工作区路径可改（设置页）。
+### 3.6 开始使用
+- **对话式**：直接在 DSH 对话框里用中文提出任务即可（十一项技能，见第四节）；
+- **工作台式**：点 DSH 侧边栏「工作台」按钮（或双击桌面快捷方式 / `ui\start.cmd`）打开本地工作台：8 个工具一键运行、文件浏览与预览（xlsx/docx/md/文本）、模板与数据直达、CAD 环境探测、招标报告查看、工作区路径可改（设置页）。
 
-## 四、技能使用指南（9 个）
+## 四、技能使用指南（11 个）
 
 | 技能 | 触发关键词 | 你需要提供 | 你得到 |
 |---|---|---|---|
@@ -93,6 +117,8 @@ scripts\runpy.cmd scripts\smoke_test.py
 | 规范标准查询 | 规范、条文、GB 编号 | 规范名/主题 + 问题 | 条文摘录 + 版本 + 来源链接 |
 | 打开工作台 | 打开工作台、启动工作台 | 无 | 启动本地 UI 并打开浏览器 |
 | 故障诊断 | 工具报错、连续失败 | 错误现象 | 按五步法（观察→假设→验证→行动→复核）排查 |
+| 中文回复规范 | 全程中文（默认生效） | — | 中文术语规范、代码/路径不翻译 |
+| 作者元数据 | 生成交付文件、标注作者 | 项目/文件名 | 文件带 `author: moqsting` 等标注 |
 
 **使用纪律（重要）**：
 - 报价、招标信息必须带来源链接与日期，DSH 查不到的会明说，不会编造。

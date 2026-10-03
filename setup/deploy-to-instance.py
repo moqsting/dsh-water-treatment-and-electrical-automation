@@ -121,7 +121,7 @@ def start_instance(dsh_home, profile, port, version_dir):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dsh-home", default=str(DEFAULT_DSH_HOME))
-    ap.add_argument("--profile", default="0.2.0-rc.2_test")
+    ap.add_argument("--profile", default="wet-automation")
     ap.add_argument("--port", type=int, default=8787)
     ap.add_argument("--version-dir", default=str(DEFAULT_DSH_VERSION_DIR))
     ap.add_argument("--start", action="store_true")
