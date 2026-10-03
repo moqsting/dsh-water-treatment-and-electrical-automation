@@ -568,12 +568,12 @@ class UiHandler(BaseHTTPRequestHandler):
             return _json_response(self, 200, {
                 "status": "ok",
                 "name": "integration-pack-workbench",
-                "workspace": str(configured_workspace() or WORKSPACE_ROOT),
+                "workspace": str(configured_workspace()) if configured_workspace() else "",
                 "pack_root": str(PACK_ROOT),
             })
         if path == "/api/workspace":
             return _json_response(self, 200, {
-                "workspace": str(configured_workspace() or WORKSPACE_ROOT),
+                "workspace": str(configured_workspace()) if configured_workspace() else "",
                 "custom": configured_workspace() is not None,
             })
         if path == "/api/env":

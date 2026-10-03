@@ -256,6 +256,29 @@ button { font-family: inherit; }
 .dialog-name { font-size: 13px; font-weight: 600; }
 .dialog-example { font-size: 12px; color: var(--text-2); margin-top: 3px; word-break: break-all; }
 
+/* ---------- 工作区选择弹窗 ---------- */
+.ws-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+.ws-picker-card {
+  width: min(520px, calc(100vw - 48px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ws-picker-card .input { width: 100%; }
+
 /* ---------- 提示与结果 ---------- */
 .hint { font-size: 12.5px; color: var(--muted); }
 .result-box {

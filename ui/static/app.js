@@ -1096,15 +1096,95 @@ function initActions() {
   });
 }
 
+function setWorkspaceDisplay(ws) {
+  const el = $("#workspace-display");
+  el.textContent = ws ? "工作区：" + ws : "工作区：未设置";
+  el.title = ws || "";
+}
+
 async function loadWorkspace() {
   try {
-    const j = await api("/api/health");
-    $("#workspace-display").textContent = "工作区：" + j.workspace;
-    $("#workspace-display").title = j.workspace;
+    const j = await api("/api/workspace");
+    if (!j.custom) {
+      showWorkspacePicker();
+      setWorkspaceDisplay("");
+      return;
+    }
+    setWorkspaceDisplay(j.workspace);
   } catch (e) {
     $("#workspace-display").textContent = "工作区：无法读取";
-    console.error("[ui] health failed:", e);
+    console.error("[ui] workspace failed:", e);
   }
+}
+
+/** 首次使用：引导用户选择工作区目录（选择后记录，不再弹出）。 */
+function showWorkspacePicker() {
+  if (document.getElementById("ws-picker")) return;
+
+  const overlay = document.createElement("div");
+  overlay.id = "ws-picker";
+  overlay.className = "ws-picker-overlay";
+
+  const card = document.createElement("div");
+  card.className = "ws-picker-card";
+
+  const title = document.createElement("h2");
+  title.className = "section-title";
+  title.textContent = "选择工作区目录";
+
+  const desc = document.createElement("p");
+  desc.className = "hint";
+  desc.textContent = "请选择一个用于存放你的项目文件（报价表、图纸、报告等）的本地目录。首次设置后，工作台将把该目录作为你的工作区，后续可在「设置」页修改。";
+
+  const input = document.createElement("input");
+  input.className = "input";
+  input.type = "text";
+  input.id = "ws-picker-input";
+  input.placeholder = "例如 D:\\Projects\\某某项目";
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") saveBtn.click();
+  });
+
+  const actions = document.createElement("div");
+  actions.className = "card-actions";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.className = "btn btn-primary";
+  saveBtn.textContent = "保存";
+  saveBtn.addEventListener("click", async () => {
+    const p = input.value.trim();
+    if (!p) { toast("请输入工作区目录路径。", "warn"); return; }
+    try {
+      const j = await api("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: p }),
+      });
+      setWorkspaceDisplay(j.workspace);
+      overlay.remove();
+      toast("工作区已设置", "success");
+    } catch (e) {
+      toast(errorToUser(e.message || (e.payload && e.payload.hint) || "设置失败"), "error");
+    }
+  });
+
+  const laterBtn = document.createElement("button");
+  laterBtn.className = "btn";
+  laterBtn.textContent = "稍后设置";
+  laterBtn.addEventListener("click", () => {
+    overlay.remove();
+    setWorkspaceDisplay("");
+  });
+
+  actions.appendChild(saveBtn);
+  actions.appendChild(laterBtn);
+  card.appendChild(title);
+  card.appendChild(desc);
+  card.appendChild(input);
+  card.appendChild(actions);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+  input.focus();
 }
 
 // ---------- 启动 ----------
