@@ -85,11 +85,17 @@ def self_check(manifest, zip_path):
         ok &= chk(all(n.startswith("overrides/") for n in inner), "用户文件均在 overrides/ 内")
         ok &= chk(not any(n.startswith("overrides/home/") for n in names),
                   "dshhome 形态：overrides/ 直接平铺（无 home/ 前缀，即 profile 形态误用）")
-        ok &= chk(len([n for n in names if n.endswith("SKILL.md")]) == len(m.get("skills", [])),
+        # 只统计 home 级技能（overrides/skills/）；overrides/wta/skills/ 是供 @pack/skills 浏览的副本
+        ok &= chk(len([n for n in names
+                       if n.startswith("overrides/skills/") and n.endswith("SKILL.md")]) == len(m.get("skills", [])),
                   f"技能文件数与 manifest.skills 一致（{len(m.get('skills', []))}）")
         ok &= chk("overrides/AGENTS.md" in names, "含全局指令 AGENTS.md")
         ok &= chk("overrides/wta/ui/server.py" in names, "含工作台 ui（overrides/wta/ui/server.py）")
         ok &= chk(any(n.startswith("overrides/wta/pydeps/") for n in names), "含离线依赖 pydeps（工具可离线运行）")
+        ok &= chk("overrides/wta/README.md" in names, "含操作手册（@pack/README.md 可访问）")
+        ok &= chk(any(n.startswith("overrides/wta/docs/") for n in names), "含文档目录（@pack/docs 可访问）")
+        ok &= chk("overrides/wta/plugins/插件清单.md" in names, "含插件清单（@pack/plugins 可访问）")
+        ok &= chk(any(n.startswith("overrides/wta/skills/") for n in names), "含技能说明（@pack/skills 可访问）")
     return ok, lines
 
 
@@ -129,11 +135,13 @@ def main():
         # workbench-path.json：留空占位，插件会自动定位到 $DSH_HOME/wta/ui
         z.writestr(f"overrides/profiles/{PROFILE_NAME}/open-workbench/workbench-path.json",
                    '{"uiDir": "", "pythonw": "pythonw"}')
-        # 工具链（工作台 + 脚本 + 离线依赖 + 模板/数据/配置）→ $DSH_HOME/wta/
-        # 目的：只发 .dspack 即可一键导入（含插件挂载 + 工作台 + 依赖）
-        tool_dirs = ("ui", "scripts", "pydeps", "templates", "data", "config")
-        skip_dirs = {"__pycache__", ".git"}
+        # 工具链（工作台 + 脚本 + 离线依赖 + 模板/数据/配置 + 文档/插件/技能说明/运行目录）
+        # → $DSH_HOME/wta/。目的：只发 .dspack 即可一键导入并完整可用。
+        tool_dirs = ("ui", "scripts", "pydeps", "templates", "data", "config",
+                     "docs", "plugins", "reports", "setup", "skills")
+        skip_dirs = {"__pycache__", ".git", "vendor"}  # vendor 含 ~49MB 插件包，不随 .dspack
         skip_files = {"ui-workspace.json", "cad_env.json"}
+        skip_prefix = ("reports/tender/", "reports/ui/")  # 运行产物不打包
         for d in tool_dirs:
             base = PACK_ROOT / d
             if not base.is_dir():
@@ -144,7 +152,15 @@ def main():
                     if f in skip_files:
                         continue
                     p = Path(root) / f
-                    z.write(p, "overrides/wta/" + p.relative_to(PACK_ROOT).as_posix())
+                    rel = p.relative_to(PACK_ROOT).as_posix()
+                    if any(rel.startswith(pre) and not rel.endswith(".gitkeep") for pre in skip_prefix):
+                        continue
+                    z.write(p, "overrides/wta/" + rel)
+        # 整合包顶层文件（README/清单/许可等，供 @pack/ 直接引用）
+        for f in ("README.md", "pack.json", "LICENSE", ".gitignore", "AGENTS.md"):
+            p = PACK_ROOT / f
+            if p.is_file():
+                z.write(p, "overrides/wta/" + f)
 
     ok, lines = self_check(manifest, dspack)
     print(f"输出：{dspack}  （{os.path.getsize(dspack)} 字节，{len(skill_dirs)} 个技能）")

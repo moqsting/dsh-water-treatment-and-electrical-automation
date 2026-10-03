@@ -155,6 +155,65 @@ def save_workspace(path_str):
     )
 
 
+def pack_resources():
+    """按整合包**实际存在**的内容动态生成资源清单。
+
+    前端不硬编码任何路径/目录名：开发布局（…/integration-pack）与导入后布局
+    （$DSH_HOME/wta）都按实际扫描结果返回，缺什么就少什么。
+    """
+
+    def list_files(sub, exts=None):
+        base = PACK_ROOT / sub
+        if not base.is_dir():
+            return []
+        out = []
+        for p in sorted(base.iterdir(), key=lambda x: x.name):
+            try:
+                if p.is_file() and (exts is None or p.suffix.lower() in exts):
+                    out.append({"name": p.name, "rel": f"@pack/{sub}/{p.name}", "note": ""})
+            except OSError:
+                continue
+        return out
+
+    # 快捷目录：只返回实际存在的目录
+    quick_defs = [
+        ("", "工作区", "你的项目目录"),
+        ("reports", "reports", "招标日报与输出结果"),
+        ("templates", "templates", "Excel 模板"),
+        ("data", "data", "载流量/工艺参数/图例库"),
+        ("config", "config", "招标关键词与来源清单"),
+        ("docs", "docs", "文档"),
+        ("scripts", "scripts", "工具脚本"),
+        ("plugins", "plugins", "插件清单"),
+        ("skills", "skills", "技能说明"),
+    ]
+    quick = []
+    for sub, name, note in quick_defs:
+        if sub == "":
+            quick.append({"rel": "", "name": name, "note": note})
+        elif (PACK_ROOT / sub).is_dir():
+            quick.append({"rel": f"@pack/{sub}", "name": name, "note": note})
+
+    groups = []
+    templates = list_files("templates", {".xlsx", ".xlsm"})
+    if templates:
+        groups.append({"title": "模板", "items": templates})
+    data = list_files("data")
+    if data:
+        groups.append({"title": "参考数据", "items": data})
+    docs = []
+    if (PACK_ROOT / "README.md").is_file():
+        docs.append({"name": "操作手册（README）", "rel": "@pack/README.md", "note": "安装、使用、故障排查"})
+    for it in list_files("docs", {".md"}):
+        docs.append({"name": it["name"], "rel": it["rel"], "note": "文档"})
+    if (PACK_ROOT / "plugins" / "插件清单.md").is_file():
+        docs.append({"name": "插件清单", "rel": "@pack/plugins/插件清单.md", "note": "随包插件与备选清单"})
+    if docs:
+        groups.append({"title": "文档", "items": docs})
+
+    return {"quickDirs": quick, "groups": groups}
+
+
 def pick_directory():
     """弹 Windows 原生目录选择对话框，返回所选路径；取消返回 None。"""
     ps = (
@@ -624,6 +683,8 @@ class UiHandler(BaseHTTPRequestHandler):
                 "workspace": str(configured_workspace()) if configured_workspace() else "",
                 "custom": configured_workspace() is not None,
             })
+        if path == "/api/resources":
+            return _json_response(self, 200, pack_resources())
         if path == "/api/env":
             return _json_response(self, 200, env_status(force=query.get("refresh") == ["1"]))
         if path == "/api/dirs":

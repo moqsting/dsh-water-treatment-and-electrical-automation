@@ -97,17 +97,8 @@ async function api(path, options = {}) {
 }
 
 // ---------- 导航 ----------
-const QUICK_DIRS = [
-  { rel: "", name: "工作区", note: "项目根目录" },
-  { rel: "@pack/reports", name: "reports", note: "招标日报与输出结果" },
-  { rel: "@pack/templates", name: "templates", note: "Excel 模板" },
-  { rel: "@pack/data", name: "data", note: "载流量/工艺参数/图例库" },
-  { rel: "@pack/config", name: "config", note: "招标关键词与来源清单" },
-  { rel: "@pack/docs", name: "docs", note: "契约与审计文档" },
-  { rel: "@pack/skills", name: "skills", note: "技能说明" },
-  { rel: "@pack/plugins", name: "plugins", note: "插件审查报告" },
-  { rel: "@pack/scripts", name: "scripts", note: "工具脚本" },
-];
+// 快捷目录与资源清单均由后端 /api/resources 按整合包**实际内容**动态返回，
+// 前端不硬编码任何路径/目录名（开发布局与导入后布局都能正确工作）。
 
 function initNav() {
   const items = document.querySelectorAll(".nav-item");
@@ -208,10 +199,17 @@ function dirItem(rel, name, note) {
   return div;
 }
 
-function loadQuickDirs() {
+async function loadQuickDirs() {
   const box = $("#quick-dirs");
-  box.innerHTML = "";
-  QUICK_DIRS.forEach((d) => box.appendChild(dirItem(d.rel, d.name, d.note)));
+  box.innerHTML = '<span class="hint">加载中……</span>';
+  try {
+    const j = await api("/api/resources");
+    box.innerHTML = "";
+    (j.quickDirs || []).forEach((d) => box.appendChild(dirItem(d.rel, d.name, d.note)));
+  } catch (e) {
+    box.innerHTML = "";
+    box.appendChild(errorBox(errorToUser(e.message)));
+  }
 }
 
 // ---------- 文件浏览 ----------
@@ -776,40 +774,22 @@ function renderToolResult(j, area) {
 }
 
 // ---------- 资源页 ----------
-const RESOURCE_GROUPS = [
-  {
-    title: "模板",
-    items: [
-      { name: "投标报价表模板.xlsx", rel: "@pack/templates/投标报价表模板.xlsx", note: "分项报价 + 汇总" },
-      { name: "IO点表模板.xlsx", rel: "@pack/templates/IO点表模板.xlsx", note: "DI/DO/AI/AO 点表" },
-      { name: "设备清单模板.xlsx", rel: "@pack/templates/设备清单模板.xlsx", note: "招标/投标设备清单" },
-      { name: "电缆清册模板.xlsx", rel: "@pack/templates/电缆清册模板.xlsx", note: "电缆敷设清册" },
-      { name: "调试记录模板.xlsx", rel: "@pack/templates/调试记录模板.xlsx", note: "设备/回路调试记录" },
-    ],
-  },
-  {
-    title: "参考数据",
-    items: [
-      { name: "电缆载流量表", rel: "@pack/data/cable_ampacity.csv", note: "YJV 铜芯 空气/埋地" },
-      { name: "水处理工艺参数", rel: "@pack/data/water_params.csv", note: "药剂/水力/生化/膜参数" },
-      { name: "CAD 图例库", rel: "@pack/data/cad_legend.csv", note: "块名 → 设备/仪表类型" },
-      { name: "常用规范清单", rel: "@pack/data/standards_list.md", note: "给排水/电气规范目录" },
-    ],
-  },
-  {
-    title: "文档",
-    items: [
-      { name: "操作手册（README）", rel: "@pack/README.md", note: "安装、使用、故障排查" },
-      { name: "工具数据契约", rel: "@pack/docs/数据契约.md", note: "工具串联规则与数据流图" },
-      { name: "插件清单", rel: "@pack/plugins/插件清单.md", note: "随包插件与备选清单" },
-    ],
-  },
-];
+// 资源分组由后端 /api/resources 按整合包实际内容动态返回，前端不硬编码路径。
 
-function initResources() {
+async function initResources() {
   const box = $("#resource-list");
+  box.innerHTML = '<span class="hint">加载中……</span>';
+  let groups = [];
+  try {
+    const j = await api("/api/resources");
+    groups = j.groups || [];
+  } catch (e) {
+    box.innerHTML = "";
+    box.appendChild(errorBox(errorToUser(e.message)));
+    return;
+  }
   box.innerHTML = "";
-  RESOURCE_GROUPS.forEach((group) => {
+  groups.forEach((group) => {
     const title = document.createElement("h2");
     title.className = "section-title";
     title.textContent = group.title;
@@ -1039,12 +1019,14 @@ async function initSettings() {
   h6.className = "section-title";
   h6.textContent = "文档";
   box.appendChild(h6);
-  const DOC_LINKS = [
-    { name: "操作手册（README）", rel: "@pack/README.md" },
-    { name: "工具数据契约", rel: "@pack/docs/数据契约.md" },
-    { name: "插件清单", rel: "@pack/plugins/插件清单.md" },
-  ];
-  DOC_LINKS.forEach((d) => {
+  // 文档入口同样来自后端资源清单（不硬编码路径）
+  let docItems = [];
+  try {
+    const res = await api("/api/resources");
+    const docGroup = (res.groups || []).find((g) => g.title === "文档");
+    docItems = docGroup ? docGroup.items : [];
+  } catch { /* 忽略：无资源时不显示文档入口 */ }
+  docItems.forEach((d) => {
     const b = document.createElement("button");
     b.className = "btn btn-sm";
     b.textContent = d.name;
