@@ -921,10 +921,19 @@ async function initSettings() {
   const wsLabel = document.createElement("span");
   wsLabel.className = "file-name";
   wsLabel.id = "settings-ws-label";
-  wsLabel.textContent = `工作区路径：${workspace || "未知"}`;
-  wsLabel.title = workspace;
+  wsLabel.textContent = `工作区路径：${workspace || "未设置"}`;
+  wsLabel.title = workspace || "";
   wsRow.appendChild(wsLabel);
-  wsRow.appendChild(explorerBtn("", "打开"));
+  const changeBtn = document.createElement("button");
+  changeBtn.className = "btn btn-sm";
+  changeBtn.textContent = "更改";
+  changeBtn.title = "通过文件资源管理器选择工作区目录";
+  changeBtn.addEventListener("click", changeWorkspace);
+  wsRow.appendChild(changeBtn);
+  const wsOpenBtn = explorerBtn("", "打开");
+  wsOpenBtn.id = "settings-ws-open";
+  wsOpenBtn.style.display = workspace ? "" : "none";
+  wsRow.appendChild(wsOpenBtn);
   box.appendChild(wsRow);
 
   // 服务控制（停止服务）
@@ -952,36 +961,6 @@ async function initSettings() {
   });
   svcRow.appendChild(stopBtn);
   box.appendChild(svcRow);
-  const wsEdit = document.createElement("div");
-  wsEdit.className = "field-row";
-  wsEdit.style.marginTop = "8px";
-  const wsInput = document.createElement("input");
-  wsInput.className = "input";
-  wsInput.id = "settings-ws-input";
-  wsInput.type = "text";
-  wsInput.placeholder = "输入新的工作区绝对路径（例如 D:\\Projects\\某某项目）";
-  const wsSave = document.createElement("button");
-  wsSave.className = "btn btn-sm";
-  wsSave.textContent = "保存";
-  wsSave.addEventListener("click", async () => {
-    const p = wsInput.value.trim();
-    if (!p) { toast("请输入目录路径。", "warn"); return; }
-    try {
-      const j = await api("/api/workspace", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: p }),
-      });
-      syncWorkspaceUI(j.workspace);
-      wsInput.value = "";
-      toast("工作区已更改", "success");
-    } catch (e) {
-      toast(errorToUser(e.message || e.payload?.hint || "更改失败"), "error");
-    }
-  });
-  wsEdit.appendChild(wsInput);
-  wsEdit.appendChild(wsSave);
-  box.appendChild(wsEdit);
 
   // CAD 环境
   const h2 = document.createElement("h2");
@@ -1104,8 +1083,32 @@ function syncWorkspaceUI(ws) {
   setWorkspaceDisplay(ws);
   const lbl = document.getElementById("settings-ws-label");
   if (lbl) {
-    lbl.textContent = "工作区路径：" + (ws || "未知");
+    lbl.textContent = "工作区路径：" + (ws || "未设置");
     lbl.title = ws || "";
+  }
+  // “打开”按钮仅在已设定工作区时出现（未设定时隐藏，避免打开无意义目录）
+  const openBtn = document.getElementById("settings-ws-open");
+  if (openBtn) openBtn.style.display = ws ? "" : "none";
+}
+
+/** 设置页“更改”：通过文件资源管理器选择工作区目录并保存。 */
+async function changeWorkspace() {
+  try {
+    const picked = await api("/api/workspace/pick", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    if (!picked.ok || !picked.path) return; // 用户取消选择
+    const saved = await api("/api/workspace", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: picked.path }),
+    });
+    syncWorkspaceUI(saved.workspace);
+    toast("工作区已更新", "success");
+  } catch (e) {
+    toast(errorToUser(e.message || "更改失败"), "error");
   }
 }
 
