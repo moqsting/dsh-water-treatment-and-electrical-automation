@@ -38,7 +38,7 @@ print("大小: %.1f MB" % (OUT.stat().st_size / 1048576))
 with zipfile.ZipFile(OUT) as z:
     names = set(z.namelist())
     checks = ["ui/server.py", "ui/start.pyw", "setup/一键安装.cmd", "setup/install.ps1",
-              "setup/make-dspack.py", "setup/deploy-to-instance.py", "skills/plc-programming-assist/SKILL.md",
+              "setup/make-dspack.py", "skills/plc-programming-assist/SKILL.md",
               "plugins/open-workbench/client.js", "plugins/open-workbench/index.js",
               "README.md", "CHANGELOG.md", "pack.json", "LICENSE", "AGENTS.md"]
     for c in checks:

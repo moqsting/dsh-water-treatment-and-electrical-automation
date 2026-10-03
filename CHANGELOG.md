@@ -4,6 +4,35 @@
 
 > 作者：moqsting（GitHub）
 
+## 2.0.0（契约重构，进行中，未发布）
+
+### 变更
+
+- **形态切换：dshhome → profile**（manifest v5 `type:"profile"`；机器文件 package.json 放 ZIP 根、`overrides/` 落 profile 根、`home/` 落 `$DSH_HOME`）。
+  为什么：dshhome 形态下 DSHL 导入器未执行 profile 依赖重建（实测 `node_modules` 缺失）；profile 形态机器文件与导入流程对齐规范 pack-structure v3 §9.2。
+  如何验证：`make-dspack.py` 20 项自检全过；待干净 profile 端到端验收。
+- **插件 git 化**：侧边栏按钮插件迁至独立仓库 `moqsting/dsh-engineering-workbench`（原名 `dsh-water-treatment-engineering`），依赖坐标改为 git commit sha（`github:moqsting/dsh-engineering-workbench` → `86b65368…`）。
+  为什么：原 `file:open-workbench` 坐标不在 manifest v5 契约内（契约只认 npm 精确版本 / git commit sha）；插件名从 `dsh-water-treatment-engineering` 改为 `dsh-engineering-workbench`。
+  如何验证：插件仓库单元测试 5/5 通过；模拟导入 `pnpm install` 拉取 git 依赖成功、`--dump-config` 确认 bundle 被 DSH 加载。
+- **纳入 4 个外来插件 + 官方导入器（npm 精确版本，放弃 git+vendored）**：`@michengai/dsh-skills-manager`、`@michengai/dsh-automation`、`dshmarket`、`dsh-bottom-info-bar` 与官方 `@dsh-packforge/dsh-pack-plugin`(0.3.5) 作为 bundles+dependencies，用 npm 精确版本。
+  为什么：实测这 5 个包均已发布到 npm registry；官方样例 `desktop-pack` 即用 npm 精确版本依赖（不打 vendored）；npm 发布包是已构建产物，install 不跑 prepare/build，故无需 git 源码 + vendored 预构建（之前 vendorize 预构建方案因此废弃）。
+  如何验证：模拟规范导入 `pnpm install` 退出码 0、6 依赖 4.6s 装齐；`--dump-config` 6 个 bundle 全被 DSH 加载、无 skipped；peer 警告均为 DSH 内置包（`autoInstallPeers:false` 正确处理）。
+- **机器文件新增 `pnpm-workspace.yaml`**（`nodeLinker: hoisted` + `autoInstallPeers: false`，对齐官方样例 desktop-pack）。
+  为什么：peer 依赖（`@deepseek-ai/cordis`、`dsh-client-*` 等）由 DSH 内置 bundle 提供，不 pnpm 重复安装。
+  如何验证：`pnpm peers check` 的 missing peer 均指向 DSH 内置包名；install 退出码 0。
+- **移除 `setup/deploy-to-instance.py`**：旧 zip 路线的部署脚本（含硬编码本机 DSH 版本目录）。
+  为什么：2.0.0 主交付为 profile 形态 `.dspack`（导入器负责依赖重建），该脚本及 `install.ps1` 中的手动 pnpm 步骤已冗余。
+  如何验证：`.dspack` 20 项自检通过；`install.ps1` 步骤 6→5、语法 0 错误。
+- **插件路径解析重构**：删除 `findDshHome` 目录嗅探与 `workbench-path.json`，改用 `ctx.profileContext`（官方 `resolveRuntime` 契约）拿 profile 根。
+  为什么：约束 1（路径由导入器解析，不在代码中硬编码）。
+  如何验证：`runtime.js` 单测覆盖 profileContext 优先 + 环境变量兜底。
+- **pydeps 指针化**：131 MB 离线依赖不再打进 `.dspack`，改走 manifest `files[]`（path+sha256+size+urls），`server.py` 增加 `pydeps_dir()` 惰性解压。
+  为什么：约束 1 + 规范 v5 §8（重内容走 `files[]` 指针闭环）。
+  如何验证：`.dspack` 体积 32.5 MB → 116 KB；`pydeps_dir()` 双布局冒烟通过。
+- **11 个技能全部重写**：frontmatter（name+description 触发条件）+ 纯文本段落正文，无表格/加粗/多级标题，≤80 行，无硬编码路径。
+  为什么：约束 5。
+  如何验证：11/11 格式合规扫描通过。
+
 ## 1.2.1
 
 ### 变更

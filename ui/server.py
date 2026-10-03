@@ -46,6 +46,32 @@ STATIC_ROOT = UI_ROOT / "static"
 WORKSPACE_ROOT = PACK_ROOT.parent                            # 工作区根
 WS_CONFIG_PATH = PACK_ROOT / "config" / "ui-workspace.json"  # 用户自定义工作区配置
 
+# pydeps 落点契约（由整合包 manifest files[] 声明、导入器下载）：
+#   导入布局（.dspack profile 形态）：<profile 根>/pydeps/（files[] 落点）
+#   开发布局：PACK_ROOT/pydeps/
+# 首次使用时若目录缺失但 tar.gz 已下载，惰性解压。
+PYDEP_TARBALL = "pydeps-2.0.0.tar.gz"
+
+
+def pydeps_dir():
+    """返回 pydeps 目录（两种布局兼容 + 惰性解压 tar.gz）。"""
+    imported = PACK_ROOT.parent / "pydeps"   # 导入布局（manifest files[] 落点）
+    dev = PACK_ROOT / "pydeps"               # 开发布局
+    for candidate in (imported, dev):
+        if (candidate / "openpyxl").is_dir():
+            return candidate
+    for candidate in (imported / PYDEP_TARBALL, dev / PYDEP_TARBALL):
+        if candidate.is_file():
+            try:
+                import tarfile
+                with tarfile.open(candidate, "r:gz") as t:
+                    t.extractall(candidate.parent, filter="data")
+            except Exception:  # noqa: BLE001
+                continue
+            if (candidate.parent / "openpyxl").is_dir():
+                return candidate.parent
+    return imported  # 兜底（目录可能存在但不完整）
+
 DEFAULT_PORT = 8618
 MAX_PORT_TRIES = 10
 
@@ -323,7 +349,7 @@ def find_free_port(host: str = "127.0.0.1", start: int = DEFAULT_PORT,
 
 def _py_run(args, timeout=15, env_extra=None):
     env = dict(os.environ)
-    env["PYTHONPATH"] = str(PACK_ROOT / "pydeps") + os.pathsep + env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = str(pydeps_dir()) + os.pathsep + env.get("PYTHONPATH", "")
     env["PYTHONIOENCODING"] = "utf-8"
     if env_extra:
         env.update(env_extra)
@@ -442,7 +468,7 @@ def preview_xlsx(target, rel):
         return {"rel": rel, "exists": True, "previewable": False,
                 "reason": "工作簿过大（超过 5MB），请用资源管理器打开"}
     try:
-        sys.path.insert(0, str(PACK_ROOT / "pydeps"))
+        sys.path.insert(0, str(pydeps_dir()))
         import openpyxl  # noqa: PLC0415
         wb = openpyxl.load_workbook(target, data_only=True)
     except ImportError:
@@ -474,7 +500,7 @@ def preview_docx(target, rel):
         return {"rel": rel, "exists": True, "previewable": False,
                 "reason": "文档过大（超过 5MB），请用资源管理器打开"}
     try:
-        sys.path.insert(0, str(PACK_ROOT / "pydeps"))
+        sys.path.insert(0, str(pydeps_dir()))
         import docx  # noqa: PLC0415
         d = docx.Document(str(target))
         paras = [p.text for p in d.paragraphs if p.text.strip()]
@@ -590,7 +616,7 @@ def execute_run(tool, params):
     if err is not None:
         return {"status": "rejected", "error": err}
     env = dict(os.environ)
-    env["PYTHONPATH"] = str(PACK_ROOT / "pydeps") + os.pathsep + env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = str(pydeps_dir()) + os.pathsep + env.get("PYTHONPATH", "")
     env["PYTHONIOENCODING"] = "utf-8"
     proc = subprocess.Popen(
         built["proc_args"],

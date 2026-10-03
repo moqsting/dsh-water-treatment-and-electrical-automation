@@ -31,8 +31,7 @@ water-treatment-and-electrical-automation\
 ├─ pack.json                  整合包自述清单（名称/版本/组件）
 ├─ setup\                     部署与导入脚本
 │   ├─ 一键安装.cmd           双击即装（自动探测 DSH 实例目录）
-│   ├─ install.ps1            部署脚本（Python 检查/依赖/自检/技能/插件/快捷方式）
-│   ├─ deploy-to-instance.py  CLI 部署（导入 + pnpm + 可选启动实例）
+│   ├─ install.ps1            部署脚本（Python 检查/依赖/自检/技能/快捷方式）
 │   ├─ make-dspack.py         生成 .dspack 整合包
 │   └─ import-into-dsh.md     DSH 内导入招标监控自动化（对话说"导入整合包自动化"）
 ├─ ui\                        本地工作台（侧边栏按钮或双击桌面快捷方式打开）

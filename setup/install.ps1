@@ -16,7 +16,7 @@ $Root = Split-Path -Parent $PSScriptRoot   # 整合包根目录
 Write-Host "=== 整合包部署：water-treatment-and-electrical-automation ==="
 
 # 1. Python 检查（缺失时可引导 winget 安装）
-Write-Host "[1/6] 检查 Python 3.12 ……"
+Write-Host "[1/5] 检查 Python 3.12 ……"
 if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
   Write-Host "  未找到 py 启动器（Python 未安装，或安装时未勾选 py launcher）。"
   $ans = Read-Host "  是否用 winget 自动安装 Python 3.12？(Y/N)"
@@ -32,10 +32,15 @@ if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
 }
 $ver = & py -3 -c "import sys; print(sys.version.split()[0])" 2>$null
 if (-not $ver) { throw "py -3 不可用。请确认已安装 Python 3." }
-Write-Host "  Python $ver OK"
+if (-not $ver.StartsWith("3.12")) {
+  Write-Host "  ⚠ 警告：当前 Python $ver；本整合包离线依赖按 3.12 编译，其他版本导入 numpy/pandas 等可能失败。"
+  Write-Host "    建议安装 Python 3.12（https://www.python.org/downloads/ 勾选 py launcher）。"
+} else {
+  Write-Host "  Python $ver OK"
+}
 
 # 2. 离线依赖（包内已内置则跳过下载，避免无谓联网）
-Write-Host "[2/6] 离线依赖库（pydeps）……"
+Write-Host "[2/5] 离线依赖库（pydeps）……"
 $pydeps = Join-Path $Root "pydeps"
 if ($SkipDeps -or (Test-Path (Join-Path $pydeps "openpyxl"))) {
   Write-Host "  已内置（$pydeps），跳过下载。"
@@ -46,12 +51,12 @@ if ($SkipDeps -or (Test-Path (Join-Path $pydeps "openpyxl"))) {
 }
 
 # 3. 冒烟测试
-Write-Host "[3/6] 运行整体自检（smoke_test）……"
+Write-Host "[3/5] 运行整体自检（smoke_test）……"
 & (Join-Path $Root "scripts\runpy.cmd") (Join-Path $Root "scripts\smoke_test.py")
 if ($LASTEXITCODE -ne 0) { Write-Host "  自检未全部通过（详见输出），可继续安装；建议先排查失败项。" }
 
 # 4. 技能安装（复制到 DSH 技能目录）
-Write-Host "[4/6] 安装技能 ……"
+Write-Host "[4/5] 安装技能 ……"
 if (-not $SkillsDir -or -not (Test-Path $SkillsDir)) {
   Write-Host "  未提供 DSH_HOME（DSH 实例目录）。跳过技能与插件安装。"
   Write-Host "  之后可用：powershell -File setup\install.ps1 -SkillsDir ""C:\Users\<你>\.dsh"""
@@ -68,19 +73,8 @@ if (-not $SkillsDir -or -not (Test-Path $SkillsDir)) {
   Write-Host "  已安装 $count 个技能到 $targetSkills"
 }
 
-# 5. 侧边栏「工作台」按钮插件部署（挂到 profile，DSH 内一键启停工作台）
-Write-Host "[5/6] 部署侧边栏「工作台」按钮插件 ……"
-$deploy = Join-Path $Root "setup\deploy-to-instance.py"
-$pluginSrc = Join-Path $Root "plugins\open-workbench"
-if ((Test-Path $deploy) -and (Test-Path $pluginSrc) -and $SkillsDir -and (Test-Path $SkillsDir)) {
-  & py -3 $deploy --dsh-home $SkillsDir --profile $Profile
-  if ($LASTEXITCODE -ne 0) { Write-Host "  插件部署未完成（可稍后重跑本脚本）。" }
-} else {
-  Write-Host "  跳过（缺少 DSH_HOME 或插件文件）。"
-}
-
-# 6. 桌面快捷方式
-Write-Host "[6/6] 创建桌面快捷方式 ……"
+# 5. 桌面快捷方式（侧边栏「工作台」按钮插件由 .dspack 导入时自动安装，不在此脚本部署）
+Write-Host "[5/5] 创建桌面快捷方式 ……"
 try {
   $ws = New-Object -ComObject WScript.Shell
   $lnk = $ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath("Desktop")) "水处理·电气自动化工作台.lnk"))
