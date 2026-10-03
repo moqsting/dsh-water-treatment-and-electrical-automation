@@ -193,7 +193,12 @@ def is_within(candidate: Path, root: Path) -> bool:
 
 
 def safe_resolve(request_path: str):
-    """把请求路径安全解析到白名单目录内；拒绝一切逃逸。返回 Path 或 None。"""
+    """把请求路径安全解析到白名单目录内；拒绝一切逃逸。返回 Path 或 None。
+
+    特殊前缀：`@pack/xxx` → 解析为整合包内路径（PACK_ROOT/xxx）。
+    用于整合包自带资源（模板/数据/文档/脚本），跨部署布局稳定且无歧义
+    （开发时 PACK_ROOT=…/integration-pack，导入后 PACK_ROOT=$DSH_HOME/wta）。
+    """
     if not isinstance(request_path, str):
         return None
     if request_path == "":
@@ -201,6 +206,10 @@ def safe_resolve(request_path: str):
     raw = request_path.replace("\\", "/").strip()
     if raw.startswith("//") or raw.startswith("\\\\"):
         return None
+    if raw == "@pack" or raw.startswith("@pack/"):
+        rel = raw[len("@pack"):].lstrip("/")
+        candidate = (PACK_ROOT / rel).resolve() if rel else PACK_ROOT
+        return candidate if is_within(candidate, PACK_ROOT) else None
     # 绝对路径（Windows 盘符 / POSIX 根）——仅在白名单目录内接受
     if re.match(r"^[a-zA-Z]:", raw) or raw.startswith("/"):
         try:

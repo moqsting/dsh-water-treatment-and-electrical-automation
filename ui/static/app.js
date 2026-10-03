@@ -99,14 +99,14 @@ async function api(path, options = {}) {
 // ---------- 导航 ----------
 const QUICK_DIRS = [
   { rel: "", name: "工作区", note: "项目根目录" },
-  { rel: "integration-pack/reports", name: "reports", note: "招标日报与输出结果" },
-  { rel: "integration-pack/templates", name: "templates", note: "Excel 模板" },
-  { rel: "integration-pack/data", name: "data", note: "载流量/工艺参数/图例库" },
-  { rel: "integration-pack/config", name: "config", note: "招标关键词与来源清单" },
-  { rel: "integration-pack/docs", name: "docs", note: "契约与审计文档" },
-  { rel: "integration-pack/skills", name: "skills", note: "技能说明" },
-  { rel: "integration-pack/plugins", name: "plugins", note: "插件审查报告" },
-  { rel: "integration-pack/scripts", name: "scripts", note: "工具脚本" },
+  { rel: "@pack/reports", name: "reports", note: "招标日报与输出结果" },
+  { rel: "@pack/templates", name: "templates", note: "Excel 模板" },
+  { rel: "@pack/data", name: "data", note: "载流量/工艺参数/图例库" },
+  { rel: "@pack/config", name: "config", note: "招标关键词与来源清单" },
+  { rel: "@pack/docs", name: "docs", note: "契约与审计文档" },
+  { rel: "@pack/skills", name: "skills", note: "技能说明" },
+  { rel: "@pack/plugins", name: "plugins", note: "插件审查报告" },
+  { rel: "@pack/scripts", name: "scripts", note: "工具脚本" },
 ];
 
 function initNav() {
@@ -421,7 +421,7 @@ const TOOL_FORMS = [
     desc: "把招标清单（xlsx / csv）规整为标准设备表：序号、设备名称、规格型号、材质、单位、数量。",
     fields: [
       { id: "input", label: "输入文件", kind: "file",
-        placeholder: "integration-pack/reports/smoke/招标清单.xlsx" },
+        placeholder: "@pack/reports/smoke/招标清单.xlsx" },
     ],
   },
   {
@@ -437,7 +437,7 @@ const TOOL_FORMS = [
     desc: "对含单价的清单做含税测算（运费/安装/管理/利润参数化）。同设备多行默认拒绝（防重复计价）。",
     fields: [
       { id: "input", label: "输入文件（含单价列）", kind: "file",
-        placeholder: "integration-pack/reports/smoke/报价A.xlsx" },
+        placeholder: "@pack/reports/smoke/报价A.xlsx" },
       { id: "tax", label: "税率 %", kind: "number", default: 13 },
       { id: "freight", label: "运费（元）", kind: "number", default: 0 },
       { id: "install", label: "安装费 %", kind: "number", default: 0 },
@@ -451,9 +451,9 @@ const TOOL_FORMS = [
     desc: "投标清单与报价清单一致性核对：漏项、多出、数量差异。",
     fields: [
       { id: "tender", label: "投标清单", kind: "file",
-        placeholder: "integration-pack/reports/smoke/招标清单.xlsx" },
+        placeholder: "@pack/reports/smoke/招标清单.xlsx" },
       { id: "quote", label: "报价清单", kind: "file",
-        placeholder: "integration-pack/reports/smoke/报价A.xlsx" },
+        placeholder: "@pack/reports/smoke/报价A.xlsx" },
     ],
   },
   {
@@ -461,7 +461,7 @@ const TOOL_FORMS = [
     desc: "从 DXF 图纸提取设备位号与仪表位号，输出带置信度的清单初稿（⚠ 项需人工复核）。",
     fields: [
       { id: "dxf", label: "DXF 图纸", kind: "file",
-        placeholder: "integration-pack/reports/smoke/测试PID.dxf" },
+        placeholder: "@pack/reports/smoke/测试PID.dxf" },
     ],
   },
   {
@@ -780,28 +780,28 @@ const RESOURCE_GROUPS = [
   {
     title: "模板",
     items: [
-      { name: "投标报价表模板.xlsx", rel: "integration-pack/templates/投标报价表模板.xlsx", note: "分项报价 + 汇总" },
-      { name: "IO点表模板.xlsx", rel: "integration-pack/templates/IO点表模板.xlsx", note: "DI/DO/AI/AO 点表" },
-      { name: "设备清单模板.xlsx", rel: "integration-pack/templates/设备清单模板.xlsx", note: "招标/投标设备清单" },
-      { name: "电缆清册模板.xlsx", rel: "integration-pack/templates/电缆清册模板.xlsx", note: "电缆敷设清册" },
-      { name: "调试记录模板.xlsx", rel: "integration-pack/templates/调试记录模板.xlsx", note: "设备/回路调试记录" },
+      { name: "投标报价表模板.xlsx", rel: "@pack/templates/投标报价表模板.xlsx", note: "分项报价 + 汇总" },
+      { name: "IO点表模板.xlsx", rel: "@pack/templates/IO点表模板.xlsx", note: "DI/DO/AI/AO 点表" },
+      { name: "设备清单模板.xlsx", rel: "@pack/templates/设备清单模板.xlsx", note: "招标/投标设备清单" },
+      { name: "电缆清册模板.xlsx", rel: "@pack/templates/电缆清册模板.xlsx", note: "电缆敷设清册" },
+      { name: "调试记录模板.xlsx", rel: "@pack/templates/调试记录模板.xlsx", note: "设备/回路调试记录" },
     ],
   },
   {
     title: "参考数据",
     items: [
-      { name: "电缆载流量表", rel: "integration-pack/data/cable_ampacity.csv", note: "YJV 铜芯 空气/埋地" },
-      { name: "水处理工艺参数", rel: "integration-pack/data/water_params.csv", note: "药剂/水力/生化/膜参数" },
-      { name: "CAD 图例库", rel: "integration-pack/data/cad_legend.csv", note: "块名 → 设备/仪表类型" },
-      { name: "常用规范清单", rel: "integration-pack/data/standards_list.md", note: "给排水/电气规范目录" },
+      { name: "电缆载流量表", rel: "@pack/data/cable_ampacity.csv", note: "YJV 铜芯 空气/埋地" },
+      { name: "水处理工艺参数", rel: "@pack/data/water_params.csv", note: "药剂/水力/生化/膜参数" },
+      { name: "CAD 图例库", rel: "@pack/data/cad_legend.csv", note: "块名 → 设备/仪表类型" },
+      { name: "常用规范清单", rel: "@pack/data/standards_list.md", note: "给排水/电气规范目录" },
     ],
   },
   {
     title: "文档",
     items: [
-      { name: "操作手册（README）", rel: "integration-pack/README.md", note: "安装、使用、故障排查" },
-      { name: "工具数据契约", rel: "integration-pack/docs/数据契约.md", note: "工具串联规则与数据流图" },
-      { name: "插件清单", rel: "integration-pack/plugins/插件清单.md", note: "随包插件与备选清单" },
+      { name: "操作手册（README）", rel: "@pack/README.md", note: "安装、使用、故障排查" },
+      { name: "工具数据契约", rel: "@pack/docs/数据契约.md", note: "工具串联规则与数据流图" },
+      { name: "插件清单", rel: "@pack/plugins/插件清单.md", note: "随包插件与备选清单" },
     ],
   },
 ];
@@ -968,7 +968,7 @@ async function initSettings() {
   h2.textContent = "CAD 环境";
   box.appendChild(h2);
   box.appendChild(settingRow("AutoCAD / ODA 路径配置（config/cad_env.json）",
-    explorerBtn("integration-pack/config", "打开配置目录")));
+    explorerBtn("@pack/config", "打开配置目录")));
   box.appendChild(settingRow("检测本机 CAD 环境", (() => {
     const b = document.createElement("button");
     b.className = "btn btn-sm";
@@ -1005,9 +1005,9 @@ async function initSettings() {
   h3.textContent = "招标监控";
   box.appendChild(h3);
   box.appendChild(settingRow("每日 08:30 自动检索，报告写入 reports/tender",
-    explorerBtn("integration-pack/reports/tender", "打开报告目录")));
+    explorerBtn("@pack/reports/tender", "打开报告目录")));
   box.appendChild(settingRow("监控关键词配置（config/tender-keywords.txt）",
-    explorerBtn("integration-pack/config", "打开配置目录")));
+    explorerBtn("@pack/config", "打开配置目录")));
 
   // 依赖库
   const h4 = document.createElement("h2");
@@ -1040,9 +1040,9 @@ async function initSettings() {
   h6.textContent = "文档";
   box.appendChild(h6);
   const DOC_LINKS = [
-    { name: "操作手册（README）", rel: "integration-pack/README.md" },
-    { name: "工具数据契约", rel: "integration-pack/docs/数据契约.md" },
-    { name: "插件清单", rel: "integration-pack/plugins/插件清单.md" },
+    { name: "操作手册（README）", rel: "@pack/README.md" },
+    { name: "工具数据契约", rel: "@pack/docs/数据契约.md" },
+    { name: "插件清单", rel: "@pack/plugins/插件清单.md" },
   ];
   DOC_LINKS.forEach((d) => {
     const b = document.createElement("button");
