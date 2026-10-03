@@ -22,7 +22,7 @@ from pathlib import Path
 
 PACK_ROOT = Path(__file__).resolve().parent.parent
 NAME = "water-treatment-and-electrical-automation"
-VERSION = "1.0.0"
+VERSION = "1.2.0"
 PROFILE_NAME = "wet-automation"          # 不得为 web / headless（规范硬约束）
 DSH_VERSION = "0.2.0-rc.2"
 
