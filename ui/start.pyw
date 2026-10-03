@@ -43,8 +43,10 @@ def main():
 
     LOG.parent.mkdir(parents=True, exist_ok=True)
     logf = open(LOG, "ab", buffering=0)  # noqa: SIM115
+    # 关键：用 sys.executable（pythonw.exe 下即 pythonw，无控制台）启动，
+    # 不能用 py 启动器——py.exe 在无控制台时会给子进程新建一个控制台窗口。
     subprocess.Popen(
-        ["py", "-3", str(UI_ROOT / "server.py")],
+        [sys.executable, str(UI_ROOT / "server.py")],
         cwd=str(UI_ROOT),
         stdout=logf,
         stderr=logf,
