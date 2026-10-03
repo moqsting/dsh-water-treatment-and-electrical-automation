@@ -22,12 +22,34 @@ function readConfig() {
   }
 }
 
+/** 定位 DSH_HOME：环境变量优先，其次从插件所在位置向上找（profiles + skills 同时存在的目录）。 */
+function findDshHome() {
+  const env = process.env.DSH_HOME
+  if (env && existsSync(env)) return env
+  let p = __dirname
+  for (let i = 0; i < 8; i++) {
+    p = dirname(p)
+    if (existsSync(join(p, 'profiles')) && existsSync(join(p, 'skills'))) return p
+  }
+  return null
+}
+
+/** 工作台 ui 目录：优先 config 指定；否则用 .dspack 导入后的固定位置 $DSH_HOME/wta/ui。 */
 function uiDir() {
-  return readConfig().uiDir || null
+  const cfg = readConfig()
+  if (cfg.uiDir) return cfg.uiDir
+  const home = findDshHome()
+  if (home) {
+    const candidate = join(home, 'wta', 'ui')
+    if (existsSync(join(candidate, 'server.py'))) return candidate
+  }
+  return null
 }
 
 function pythonw() {
-  return readConfig().pythonw || process.env.PYTHONW_EXE || 'pythonw'
+  const cfg = readConfig()
+  if (cfg.pythonw) return cfg.pythonw
+  return process.env.PYTHONW_EXE || 'pythonw'
 }
 
 export const name = 'dsh-open-workbench'

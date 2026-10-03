@@ -87,6 +87,9 @@ def self_check(manifest, zip_path):
                   "dshhome 形态：overrides/ 直接平铺（无 home/ 前缀，即 profile 形态误用）")
         ok &= chk(len([n for n in names if n.endswith("SKILL.md")]) == len(m.get("skills", [])),
                   f"技能文件数与 manifest.skills 一致（{len(m.get('skills', []))}）")
+        ok &= chk("overrides/AGENTS.md" in names, "含全局指令 AGENTS.md")
+        ok &= chk("overrides/wta/ui/server.py" in names, "含工作台 ui（overrides/wta/ui/server.py）")
+        ok &= chk(any(n.startswith("overrides/wta/pydeps/") for n in names), "含离线依赖 pydeps（工具可离线运行）")
     return ok, lines
 
 
@@ -123,9 +126,25 @@ def main():
             if p.is_file():
                 z.writestr(f"overrides/profiles/{PROFILE_NAME}/open-workbench/{f}",
                            p.read_text(encoding="utf-8"))
-        # workbench-path.json：打包用占位（目标机由部署脚本或手动配置实际路径）
+        # workbench-path.json：留空占位，插件会自动定位到 $DSH_HOME/wta/ui
         z.writestr(f"overrides/profiles/{PROFILE_NAME}/open-workbench/workbench-path.json",
                    '{"uiDir": "", "pythonw": "pythonw"}')
+        # 工具链（工作台 + 脚本 + 离线依赖 + 模板/数据/配置）→ $DSH_HOME/wta/
+        # 目的：只发 .dspack 即可一键导入（含插件挂载 + 工作台 + 依赖）
+        tool_dirs = ("ui", "scripts", "pydeps", "templates", "data", "config")
+        skip_dirs = {"__pycache__", ".git"}
+        skip_files = {"ui-workspace.json", "cad_env.json"}
+        for d in tool_dirs:
+            base = PACK_ROOT / d
+            if not base.is_dir():
+                continue
+            for root, dirs, files in os.walk(base):
+                dirs[:] = [x for x in dirs if x not in skip_dirs]
+                for f in files:
+                    if f in skip_files:
+                        continue
+                    p = Path(root) / f
+                    z.write(p, "overrides/wta/" + p.relative_to(PACK_ROOT).as_posix())
 
     ok, lines = self_check(manifest, dspack)
     print(f"输出：{dspack}  （{os.path.getsize(dspack)} 字节，{len(skill_dirs)} 个技能）")
