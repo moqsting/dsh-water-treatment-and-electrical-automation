@@ -123,6 +123,9 @@ def main():
             if p.is_file():
                 z.writestr(f"overrides/profiles/{PROFILE_NAME}/open-workbench/{f}",
                            p.read_text(encoding="utf-8"))
+        # workbench-path.json：打包用占位（目标机由部署脚本或手动配置实际路径）
+        z.writestr(f"overrides/profiles/{PROFILE_NAME}/open-workbench/workbench-path.json",
+                   '{"uiDir": "", "pythonw": "pythonw"}')
 
     ok, lines = self_check(manifest, dspack)
     print(f"输出：{dspack}  （{os.path.getsize(dspack)} 字节，{len(skill_dirs)} 个技能）")

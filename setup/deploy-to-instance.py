@@ -34,6 +34,20 @@ def sh(profile_dir, *args):
     return subprocess.run(list(args), cwd=str(profile_dir), capture_output=True, text=True)
 
 
+def find_pythonw():
+    """探测 pythonw 绝对路径（无控制台窗口的 Python 解释器）。"""
+    import platform
+    if platform.system() != "Windows":
+        return shutil.which("python3") or "python3"
+    # sys.executable = .../python.exe → 同目录 pythonw.exe（无控制台）
+    exe = sys.executable
+    if exe and exe.endswith("python.exe"):
+        w = exe[:-len("python.exe")] + "pythonw.exe"
+        if Path(w).is_file():
+            return w
+    return shutil.which("pythonw") or "pythonw"
+
+
 def import_pack(dsh_home, profile):
     home = Path(dsh_home)
     # 1) 技能
@@ -50,6 +64,12 @@ def import_pack(dsh_home, profile):
     dst_plugin = home / "profiles" / profile / "open-workbench"
     shutil.rmtree(dst_plugin, ignore_errors=True)
     shutil.copytree(PLUGIN, dst_plugin)
+    # 写实际 workbench-path.json（本机整合包路径 + pythonw 绝对路径）
+    pyw = find_pythonw()
+    (dst_plugin / "workbench-path.json").write_text(
+        json.dumps({"uiDir": str(PACK / "ui"), "pythonw": pyw}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     # 4) package.json 挂插件
     pkg_path = home / "profiles" / profile / "package.json"
     pkg = json.loads(pkg_path.read_text(encoding="utf-8"))
@@ -58,8 +78,10 @@ def import_pack(dsh_home, profile):
     if "dsh-open-workbench" not in bundles:
         bundles.append("dsh-open-workbench")
     pkg_path.write_text(json.dumps(pkg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    # 5) pnpm install
-    r = sh(home / "profiles" / profile, "pnpm", "install")
+    # 5) pnpm install（Windows 下 pnpm 是 .cmd，subprocess 需完整路径）
+    pnpm = shutil.which("pnpm.cmd") or shutil.which("pnpm") or "pnpm"
+    r = subprocess.run([pnpm, "install"], cwd=str(home / "profiles" / profile),
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
     print(f"  技能 {n} 个 + AGENTS + 插件已部署到 {home}")
     print("  pnpm install 退出码", r.returncode)
     return home, profile

@@ -1,8 +1,8 @@
 /**
  * dsh-open-workbench —— 浏览器侧插件（client bundle）。
- * 在侧边栏底部（sidebar.footer.action 槽位）注册一个“工作台”按钮：
- * 点击后探测本机运行中的整合包工作台（127.0.0.1:8618~8628），找到则在新标签页打开，
- * 未找到则提示先启动工作台。
+ * 侧边栏底部按钮，状态机：
+ *   空闲 → 点击启动工作台（"正在启动中"）→ 就绪后 window.open（"正在运行"）
+ *         → 再点击关闭工作台（"正在关闭"）→ 关闭网页（回到空闲，无字样）
  */
 window.__ModuleLoader__.load({
   id: "dsh-open-workbench",
@@ -12,42 +12,67 @@ window.__ModuleLoader__.load({
     let react = require("react");
     const e = react.createElement;
 
-    /** 探测运行中的工作台端口。 */
-    async function findWorkbench() {
-      for (let port = 8618; port <= 8628; port++) {
-        try {
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 800);
-          const r = await fetch(`http://127.0.0.1:${port}/api/health`, { signal: ctrl.signal });
-          clearTimeout(timer);
-          if (r.ok) {
-            const j = await r.json().catch(() => null);
-            if (j && j.name === "integration-pack-workbench") return port;
-          }
-        } catch { /* 该端口未运行，继续 */ }
-      }
-      return null;
+    const store = { state: "idle", listeners: new Set() };
+    function setState(next) {
+      store.state = next;
+      for (const listener of store.listeners) listener();
+    }
+    function subscribe(listener) {
+      store.listeners.add(listener);
+      return () => store.listeners.delete(listener);
     }
 
-    function OpenButton(props) {
+    let win = null;
+
+    async function api(path) {
+      const r = await fetch(path, { method: "POST", credentials: "same-origin" });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j || j.ok !== true) {
+        throw new Error((j && j.error) ? j.error : `操作失败(HTTP ${r.status})`);
+      }
+      return j;
+    }
+
+    async function toggle() {
+      if (store.state === "starting" || store.state === "stopping") return; // 进行中忽略重复点击
+      if (store.state === "idle") {
+        setState("starting");
+        try {
+          const j = await api("/api/workbench/start");
+          win = window.open(`http://127.0.0.1:${j.port}`, "_blank");
+          setState("running");
+        } catch (err) {
+          window.alert("启动工作台失败：" + (err && err.message ? err.message : String(err)));
+          setState("idle");
+        }
+      } else if (store.state === "running") {
+        setState("stopping");
+        try {
+          await api("/api/workbench/stop");
+          if (win && !win.closed) { try { win.close(); } catch {} }
+          win = null;
+          setState("idle");
+        } catch (err) {
+          window.alert("关闭工作台失败：" + (err && err.message ? err.message : String(err)));
+          setState("running");
+        }
+      }
+    }
+
+    function WorkbenchButton(props) {
+      const state = react.useSyncExternalStore(subscribe, () => store.state);
       const wide = props && props.wide;
+      const statusText = {
+        starting: "正在启动中",
+        running: "正在运行",
+        stopping: "正在关闭",
+      }[state] || null;
       return e(
         "button",
         {
-          title: "打开工作台",
-          "aria-label": "打开工作台",
-          onClick: async () => {
-            try {
-              const port = await findWorkbench();
-              if (port) {
-                window.open(`http://127.0.0.1:${port}`, "_blank");
-              } else {
-                window.alert("工作台未运行。请先双击桌面快捷方式“水处理·电气自动化工作台”，或运行 ui\\start.pyw。");
-              }
-            } catch (err) {
-              window.alert("打开工作台失败：" + (err && err.message ? err.message : String(err)));
-            }
-          },
+          title: state === "running" ? "关闭工作台" : "打开工作台",
+          "aria-label": "工作台",
+          onClick: toggle,
           style: {
             display: "flex",
             alignItems: "center",
@@ -76,15 +101,9 @@ window.__ModuleLoader__.load({
         e(
           "svg",
           {
-            width: 16,
-            height: 16,
-            viewBox: "0 0 24 24",
-            fill: "none",
-            stroke: "currentColor",
-            strokeWidth: 2,
-            strokeLinecap: "round",
-            strokeLinejoin: "round",
-            "aria-hidden": true,
+            width: 16, height: 16, viewBox: "0 0 24 24", fill: "none",
+            stroke: "currentColor", strokeWidth: 2,
+            strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true,
           },
           e("rect", { key: "r", x: 3, y: 4, width: 18, height: 16, rx: 2 }),
           e("line", { key: "l1", x1: 3, y1: 9, x2: 21, y2: 9 }),
@@ -92,13 +111,23 @@ window.__ModuleLoader__.load({
           e("circle", { key: "c2", cx: 13, cy: 14, r: 1.5 }),
         ),
         wide ? e("span", { key: "t" }, "工作台") : null,
+        statusText
+          ? e(
+              "span",
+              {
+                key: "s",
+                style: { fontSize: 11, opacity: 0.8, marginLeft: wide ? "auto" : 4 },
+              },
+              statusText,
+            )
+          : null,
       );
     }
 
     const inject = ["slots"];
     function apply(ctx) {
       ctx.slots.inject("sidebar.footer.action", () =>
-        ctx.slots.register({ name: "sidebar.footer.action", id: "open-workbench-button" }, OpenButton),
+        ctx.slots.register({ name: "sidebar.footer.action", id: "open-workbench-button" }, WorkbenchButton),
       );
     }
 
