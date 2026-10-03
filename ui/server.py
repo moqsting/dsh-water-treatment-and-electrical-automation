@@ -165,9 +165,14 @@ def pick_directory():
         "if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $d.SelectedPath }"
     )
     try:
+        flags = {}
+        if os.name == "nt":
+            # 隐藏 PowerShell 的控制台窗口（FolderBrowserDialog 是 GUI，不受影响）
+            flags["creationflags"] = subprocess.CREATE_NO_WINDOW
         r = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300,
+            **flags,
         )
         path = (r.stdout or "").strip()
         return path or None
