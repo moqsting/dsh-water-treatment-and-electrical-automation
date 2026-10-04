@@ -35,7 +35,7 @@ DSH_VERSION = "0.2.0-rc.2"
 
 # 工作台按钮插件（npm 未发布，git commit sha 坐标）
 PLUGIN_REPO = "github:moqsting/dsh-engineering-workbench"
-PLUGIN_SHA = "86b653688d46e13ab96f3ce7cfa2d2afab997441"
+PLUGIN_SHA = "eb6d850cdbd6712abadc48a6a05b22f894fee9ee"
 PLUGIN_NAME = "dsh-engineering-workbench"
 
 # 招标工作台插件（npm 0.6.1 未发布，git commit sha 坐标；prepare 构建 lib/）

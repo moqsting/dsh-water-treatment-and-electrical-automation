@@ -42,7 +42,6 @@ if hasattr(sys.stderr, "reconfigure"):
 
 PACK_ROOT = Path(__file__).resolve().parent.parent          # integration-pack
 UI_ROOT = Path(__file__).resolve().parent                    # integration-pack/ui
-STATIC_ROOT = UI_ROOT / "static"
 WORKSPACE_ROOT = PACK_ROOT.parent                            # 工作区根
 WS_CONFIG_PATH = PACK_ROOT / "config" / "ui-workspace.json"  # 用户自定义工作区配置
 
@@ -238,31 +237,6 @@ def pack_resources():
         groups.append({"title": "文档", "items": docs})
 
     return {"quickDirs": quick, "groups": groups}
-
-
-def pick_directory():
-    """弹 Windows 原生目录选择对话框，返回所选路径；取消返回 None。"""
-    ps = (
-        "Add-Type -AssemblyName System.Windows.Forms;"
-        "$d = New-Object System.Windows.Forms.FolderBrowserDialog;"
-        "$d.Description = '选择工作区目录';"
-        "$d.ShowNewFolderButton = $true;"
-        "if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $d.SelectedPath }"
-    )
-    try:
-        flags = {}
-        if os.name == "nt":
-            # 隐藏 PowerShell 的控制台窗口（FolderBrowserDialog 是 GUI，不受影响）
-            flags["creationflags"] = subprocess.CREATE_NO_WINDOW
-        r = subprocess.run(
-            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300,
-            **flags,
-        )
-        path = (r.stdout or "").strip()
-        return path or None
-    except Exception:  # noqa: BLE001
-        return None
 
 
 def is_device_name(name: str) -> bool:
@@ -734,25 +708,8 @@ class UiHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/"):
             return _json_response(self, 404, {"error": "not found", "path": path})
 
-        # 静态文件
-        rel = path.lstrip("/") or "index.html"
-        target = (STATIC_ROOT / rel).resolve()
-        if not is_within(target, STATIC_ROOT):
-            return _json_response(self, 403, {"error": "forbidden"})
-        if not target.is_file():
-            return self._send_text(404, "未找到该页面。", "text/plain")
-        content = target.read_bytes()
-        self.send_response(200)
-        ctype = "text/html" if target.suffix == ".html" else (
-            "text/css" if target.suffix == ".css" else
-            "application/javascript" if target.suffix == ".js" else
-            "application/octet-stream"
-        )
-        self.send_header("Content-Type", f"{ctype}; charset=utf-8")
-        self.send_header("Content-Length", str(len(content)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(content)
+        # 工作台 UI 已内嵌进 DSH（better-sidebar Tab），不再服务静态前端页面
+        return self._send_text(404, "工作台 UI 已内嵌进 DSH，无静态页面。", "text/plain")
 
     def do_POST(self):
         parsed = urlparse(self.path)
@@ -764,11 +721,6 @@ class UiHandler(BaseHTTPRequestHandler):
         except (UnicodeDecodeError, json.JSONDecodeError):
             return _json_response(self, 400, {"error": "bad json"})
 
-        if path == "/api/workspace/pick":
-            picked = pick_directory()
-            if picked:
-                return _json_response(self, 200, {"ok": True, "path": picked})
-            return _json_response(self, 200, {"ok": False, "path": None})
         if path == "/api/workspace":
             raw = payload.get("path")
             if not isinstance(raw, str) or raw.strip() == "":

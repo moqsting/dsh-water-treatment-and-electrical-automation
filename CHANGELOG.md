@@ -35,6 +35,12 @@
 - **11 个技能全部重写**：frontmatter（name+description 触发条件）+ 纯文本段落正文，无表格/加粗/多级标题，≤80 行，无硬编码路径。
   为什么：约束 5。
   如何验证：11/11 格式合规扫描通过。
+- **工作台插件 UI 内嵌 DSH（`dsh-engineering-workbench` 1.0.0）**：侧边栏按钮不再 `window.open` 单开浏览器，改为 better-sidebar Tab 内嵌 5 页面（工具/文件/资源/设置/环境）；目录选择用插件自包含的 Node fs 目录浏览器（跨平台，不依赖本机 PowerShell / directoryPicker 后端）；host 加 `/api/workbench/proxy/*` 反向代理。
+  为什么：可移植（不依赖本机环境）；对齐 DSH 内部 UI 规范（tender-workbench 同款 better-sidebar Tab）。
+  如何验证：`0.2.0-rc.2_test` 单独测插件通过（Tab + 5 页面 + 目录浏览器）；插件仓库已发正式版 v1.0.0。
+- **删除 server.py 旧前端 `static/`**：工作台 UI 内嵌 DSH 后，不再需要独立网页前端（`app.js`/`index.html`/`style.css`），保留全部 `/api/*` 后端。
+  为什么：UI 单一化（只在 DSH 内），避免两套前端维护。
+  如何验证：`server.py` 语法通过、`.dspack` 24 项自检通过、体积 116KB → 99KB。
 
 ## 1.2.1
 
