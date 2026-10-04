@@ -1,7 +1,7 @@
 # water-treatment-and-electrical-automation —— 水处理与电气自动化工程师整合包
 
 > 作者：moqsting（GitHub）｜ 仓库：https://github.com/moqsting/dsh-water-treatment-and-electrical-automation
-> 版本 v1.2.1 ｜ 适用：DSH 0.2.0-rc.2 + Windows + **Python 3.12（含 `py` 启动器，必装前置）**
+> 版本 v2.0.0 ｜ 适用：DSH 0.2.0-rc.2 + Windows + **Python 3.12（含 `py` 启动器，必装前置）**
 > 本手册面向第一次使用的工程师，按顺序读一遍即可上手。
 
 ---
@@ -64,7 +64,7 @@ Python 库依赖（`pydeps\`，19 个包）已随包**离线内置**，无需联
 
 ### 3.1 路线 A：DSHL 一键导入（推荐，最省事）
 
-把 **`release\water-treatment-and-electrical-automation-1.2.1.dspack`** 拖进 DSHL 的「手动安装整合包」入口即可。导入后自动就位：
+把 **`release\water-treatment-and-electrical-automation-2.0.0.dspack`** 拖进 DSHL 的「手动安装整合包」入口即可。导入后自动就位：
 
 - 11 个技能 + `AGENTS.md` → `$DSH_HOME`
 - 工作台 + 工具链 + 离线依赖 → `$DSH_HOME\wta`
@@ -169,17 +169,29 @@ scripts\runpy.cmd scripts\smoke_test.py
 ### 数据来源（供查证）
 完整清单见 `config\tender-sources.md`：中国政府采购网、中国招标投标公共服务平台、全国公共资源交易平台、各省公共资源交易中心（权威公开源）；1688/京东工业品/震坤行/西域等价格参考源。每条信息都会附来源链接与日期。
 
-## 7、可选插件（非必需）
+## 七、内置插件（2.0.0 起随包自动安装）
 
-核心能力不依赖插件。随包附带 1 个已审查插件（离线可装），其余为备选清单（联网自装）。完整说明见 `plugins\插件清单.md`，安全审查报告见 `docs\dev\插件安全审查报告.md`。
+整合包通过 manifest 依赖声明，导入时由 DSHL 的规范导入器**自动 `pnpm install` 并挂载**以下插件，**无需任何手动操作**：
 
-| 插件 | 状态 | 安装 |
+| 插件 | 版本/坐标 | 作用 |
 |---|---|---|
-| dsh-univer-office 0.3.6 | ✅ 随包（`plugins\vendor\` 内 tgz） | `dsh plugin --profile <profile名> add ./plugins/vendor/dsh-univer-office-0.3.6.tgz` |
-| dsh-office 0.2.4 / anydoc / modlens / modsearch | 备选（联网自装，按清单实测） | 见 `plugins\插件清单.md` |
-| dsh-excel-chat | 暂不安装（peer 仅兼容 0.1.x） | 等作者适配 0.2.x |
+| `dsh-engineering-workbench` | git `86b65368` | 侧边栏「工作台」按钮（一键启停本地工作台） |
+| `dsh-tender-workbench` | git `21a6a85e` | 招投标工作台（企查查 MCP 查询 + Excel/PDF 导出） |
+| `dsh-mcp-connector` | npm `0.2.66` | 企查查 MCP 连接器（提供 `mcp__qcc-tender__*` 查询工具） |
+| `dsh-better-sidebar` | npm `0.24.1` | 可视化工作台 Tab 容器 |
+| `@michengai/dsh-skills-manager` | npm `1.1.8` | 技能管理器 |
+| `@michengai/dsh-automation` | npm `0.1.53` | 自动化 / 定时任务 |
+| `dshmarket` | npm `1.66.8` | 插件市场浏览 |
+| `dsh-bottom-info-bar` | npm `1.20.13` | 底部信息栏 |
+| `@dsh-packforge/dsh-pack-plugin` | npm `0.3.5` | 官方整合包导入/导出器（DSH-PackForge 规范必备） |
 
-**注意**：univer-office 安装后建议关闭遥测（设置 `telemetry: false` 或环境变量 `DO_NOT_TRACK=1`）。任何插件启动失败即 `dsh plugin remove <包名>` 回退，核心能力不受影响。
+**npm 版本认证**：上表 npm 坐标均为各包在 npm registry 的**精确发布版本**（可用 `pnpm view <包名> version` 核实，均已实测可装）；两个 git 坐标指向 `moqsting` 仓库的**固定 commit sha**（钉死，可复现）。
+
+### 招投标工作台（dsh-tender-workbench）
+
+- **定位**：与第 4 节「招标与价格查询」技能互补——技能走公开源 web 检索；本插件走**企查查 MCP** 专项查询（找招标机会 + 拟建项目），支持规则初筛、人工复核、Excel/PDF 导出。
+- **首次授权**：企查查数据源用 **OAuth 2.0 PKCE 本机授权**（发行方 `https://agent.qcc.com`，scope `mcp:tools`）。**授权令牌只存你本机、由连接器自动刷新，整合包不含任何 Token/凭据**。
+- **注意**：本插件只调用 `mcp__qcc-tender__search_tenders` 与 `mcp__qcc-tender__search_proposed_projects` 两个工具；真实查询额度与费用由你自己的企查查账号决定。
 
 ## 八、CAD 环境配置（重要）
 

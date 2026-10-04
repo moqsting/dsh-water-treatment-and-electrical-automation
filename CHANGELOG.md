@@ -17,6 +17,9 @@
 - **纳入 4 个外来插件 + 官方导入器（npm 精确版本，放弃 git+vendored）**：`@michengai/dsh-skills-manager`、`@michengai/dsh-automation`、`dshmarket`、`dsh-bottom-info-bar` 与官方 `@dsh-packforge/dsh-pack-plugin`(0.3.5) 作为 bundles+dependencies，用 npm 精确版本。
   为什么：实测这 5 个包均已发布到 npm registry；官方样例 `desktop-pack` 即用 npm 精确版本依赖（不打 vendored）；npm 发布包是已构建产物，install 不跑 prepare/build，故无需 git 源码 + vendored 预构建（之前 vendorize 预构建方案因此废弃）。
   如何验证：模拟规范导入 `pnpm install` 退出码 0、6 依赖 4.6s 装齐；`--dump-config` 6 个 bundle 全被 DSH 加载、无 skipped；peer 警告均为 DSH 内置包（`autoInstallPeers:false` 正确处理）。
+- **纳入招投标工作台链路**：`dsh-tender-workbench`（git `21a6a85e`）+ `dsh-mcp-connector`（npm `0.2.66`）+ `dsh-better-sidebar`（npm `0.24.1`）。
+  为什么：新增企查查 MCP 专项招标查询（找招标机会/拟建项目 + Excel/PDF 导出），与「招标与价格查询」技能互补；`dsh-tender-workbench` 0.6.1 未发 npm（npm 仅 0.5.11，面向 0.1.x 不可用），故用 git 坐标。
+  如何验证：`pnpm-workspace.yaml` 加 allowBuilds 精确键放行其 prepare 构建；模拟导入 9 插件全装齐、`tender-workbench/lib` 产物生成、挂载顺序 `dsh-mcp-connector` 先于 `dsh-tender-workbench`（自检 24 项 PASS）。
 - **机器文件新增 `pnpm-workspace.yaml`**（`nodeLinker: hoisted` + `autoInstallPeers: false`，对齐官方样例 desktop-pack）。
   为什么：peer 依赖（`@deepseek-ai/cordis`、`dsh-client-*` 等）由 DSH 内置 bundle 提供，不 pnpm 重复安装。
   如何验证：`pnpm peers check` 的 missing peer 均指向 DSH 内置包名；install 退出码 0。

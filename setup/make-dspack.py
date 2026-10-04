@@ -38,12 +38,19 @@ PLUGIN_REPO = "github:moqsting/dsh-engineering-workbench"
 PLUGIN_SHA = "86b653688d46e13ab96f3ce7cfa2d2afab997441"
 PLUGIN_NAME = "dsh-engineering-workbench"
 
-# 外来插件 + 官方导入插件（npm registry 已发布，用精确版本）
+# 招标工作台插件（npm 0.6.1 未发布，git commit sha 坐标；prepare 构建 lib/）
+TENDER_REPO = "github:moqsting/dsh-tender-workbench"
+TENDER_SHA = "21a6a85e043f4c8d67ad0f0d394f8737e3eb6989"
+TENDER_NAME = "dsh-tender-workbench"
+
+# npm registry 已发布的插件（精确版本）
 NPM_PLUGINS = {
     "@michengai/dsh-skills-manager": "1.1.8",
     "@michengai/dsh-automation": "0.1.53",
     "dshmarket": "1.66.8",
     "dsh-bottom-info-bar": "1.20.13",
+    "dsh-mcp-connector": "0.2.66",        # 企查查 MCP 连接器（提供工具，必须先于 tender-workbench）
+    "dsh-better-sidebar": "0.24.1",       # 可视化工作台 Tab 容器
     "@dsh-packforge/dsh-pack-plugin": "0.3.5",   # 官方规范导入器（整合包必备）
 }
 
@@ -74,11 +81,24 @@ def sha256_of(path: Path) -> str:
 
 
 def bundles_list() -> list:
-    return ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", PLUGIN_NAME, *NPM_PLUGINS.keys()]
+    # 挂载顺序：提供方先于消费方（dsh-mcp-connector 必须在 dsh-tender-workbench 之前）
+    return [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        PLUGIN_NAME,                       # 工作台按钮（git）
+        "@michengai/dsh-skills-manager",
+        "@michengai/dsh-automation",
+        "dshmarket",
+        "dsh-bottom-info-bar",
+        "dsh-mcp-connector",               # 提供 mcp__qcc-tender__* 工具
+        "dsh-better-sidebar",
+        TENDER_NAME,                       # 招标工作台（消费工具，git）
+        "@dsh-packforge/dsh-pack-plugin",  # 官方导入器最后
+    ]
 
 
 def dependencies_map() -> dict:
-    return {PLUGIN_REPO: PLUGIN_SHA, **NPM_PLUGINS}
+    return {PLUGIN_REPO: PLUGIN_SHA, TENDER_REPO: TENDER_SHA, **NPM_PLUGINS}
 
 
 def build_manifest() -> dict:
@@ -109,7 +129,11 @@ def build_manifest() -> dict:
 
 def build_machine_package() -> dict:
     """profile 机器文件快照（ZIP 根 package.json；导入器会按 manifest 权威重建）。"""
-    deps = {PLUGIN_NAME: f"{PLUGIN_REPO}#{PLUGIN_SHA}", **NPM_PLUGINS}
+    deps = {
+        PLUGIN_NAME: f"{PLUGIN_REPO}#{PLUGIN_SHA}",
+        TENDER_NAME: f"{TENDER_REPO}#{TENDER_SHA}",
+        **NPM_PLUGINS,
+    }
     return {
         "name": f"dsh-profile-{PROFILE_NAME}",
         "private": True,
@@ -123,8 +147,19 @@ def build_machine_package() -> dict:
 
 
 def build_workspace() -> str:
-    """pnpm-workspace.yaml 机器文件（YAML 文本，对齐官方样例 desktop-pack）。"""
-    lines = ["packages:", "  - .", "nodeLinker: hoisted", "autoInstallPeers: false"]
+    """pnpm-workspace.yaml 机器文件（YAML 文本）。
+
+    allowBuilds 放行 dsh-tender-workbench 的 prepare 构建（git 源码形态需要现场构建 lib/；
+    npm 发行版无需此键）。键为精确坐标，跟随 commit sha。
+    """
+    lines = [
+        "packages:",
+        "  - .",
+        "nodeLinker: hoisted",
+        "autoInstallPeers: false",
+        "allowBuilds:",
+        f'  "dsh-tender-workbench@https://codeload.github.com/moqsting/dsh-tender-workbench/tar.gz/{TENDER_SHA}": true',
+    ]
     return "\n".join(lines) + "\n"
 
 
@@ -160,14 +195,19 @@ def self_check(m: dict, zip_path: Path) -> tuple:
     chk(m["type"] == "profile", "type == profile")
     chk(bool(re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", m["name"])), "name 为 kebab-case")
     chk(bool(re.match(r"^\d+\.\d+\.\d+$", m["version"])), "version 为 semver")
-    chk(PLUGIN_NAME in m["bundles"] and "@dsh-packforge/dsh-pack-plugin" in m["bundles"],
-        "bundles 含工作台插件 + 官方 dsh-pack-plugin")
-    # 依赖：git 坐标 40 位 sha（工作台插件）+ npm 精确版本（外来插件 + 官方插件）
-    dep = m["dependencies"].get(PLUGIN_REPO)
-    chk(bool(re.match(r"^[0-9a-f]{40}$", dep or "")), "dependencies 的工作台插件为 40 位 commit sha")
+    chk(PLUGIN_NAME in m["bundles"] and TENDER_NAME in m["bundles"] and "@dsh-packforge/dsh-pack-plugin" in m["bundles"],
+        "bundles 含工作台 + 招标工作台 + 官方 dsh-pack-plugin")
+    # 挂载顺序：dsh-mcp-connector 必须在 dsh-tender-workbench 之前（提供方先于消费方）
+    bi = m["bundles"].index("dsh-mcp-connector") if "dsh-mcp-connector" in m["bundles"] else -1
+    bt = m["bundles"].index(TENDER_NAME) if TENDER_NAME in m["bundles"] else -1
+    chk(0 <= bi < bt, "bundles 顺序：dsh-mcp-connector 先于 dsh-tender-workbench")
+    # 依赖：2 个 git 坐标 40 位 sha（工作台 + 招标）+ npm 精确版本
+    for coord in (PLUGIN_REPO, TENDER_REPO):
+        dep = m["dependencies"].get(coord)
+        chk(bool(re.match(r"^[0-9a-f]{40}$", dep or "")), f"dependencies 的 {coord} 为 40 位 commit sha")
     chk(all(re.match(r"^\d+\.\d+\.\d+$", m["dependencies"].get(k, "")) for k in NPM_PLUGINS),
-        "dependencies 的外来/官方插件为 npm 精确版本")
-    chk("vendored" not in m, "无 vendored（依赖均为 npm 精确版本 / 唯一 git 依赖无 build 脚本）")
+        "dependencies 的 npm 插件为精确版本")
+    chk("vendored" not in m, "无 vendored（npm 精确版本；2 个 git 依赖由 allowBuilds 放行构建）")
     chk(len(m["files"]) >= 1, "files[] 非空（pydeps 重内容）")
     if m["files"]:
         e = m["files"][0]
