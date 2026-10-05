@@ -29,13 +29,13 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PACK_ROOT = SCRIPT_DIR.parent
 
 NAME = "water-treatment-and-electrical-automation"
-VERSION = "2.2.1"
+VERSION = "2.2.2"
 PROFILE_NAME = "wet-automation"
 DSH_VERSION = "0.2.0-rc.2"
 
 # 工作台插件（npm 未发布，git commit sha 坐标）
 PLUGIN_REPO = "github:moqsting/dsh-engineering-workbench"
-PLUGIN_SHA = "65655d33711630e5ba78942ee29582af8eced3a4"
+PLUGIN_SHA = "1c6a23470af49bbcef9789efa250aa47d632143f"
 PLUGIN_NAME = "dsh-engineering-workbench"
 
 # 招标工作台插件（npm 0.6.1 未发布，git commit sha 坐标；prepare 构建 lib/）
@@ -54,7 +54,7 @@ NPM_PLUGINS = {
     "@dsh-packforge/dsh-pack-plugin": "0.3.5",   # 官方规范导入器（整合包必备）
 }
 
-PYDEP_TARBALL = "pydeps-2.2.1.tar.gz"
+PYDEP_TARBALL = "pydeps-2.2.2.tar.gz"
 PYDEP_URL = ("https://github.com/moqsting/dsh-water-treatment-and-electrical-automation/"
              f"releases/download/v{VERSION}/{PYDEP_TARBALL}")
 

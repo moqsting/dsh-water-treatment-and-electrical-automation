@@ -413,10 +413,20 @@ def env_status(force=False):
         r = _py_run([str(PACK_ROOT / "scripts" / "cad_env.py"), "--json"], timeout=20)
         if r.returncode == 0:
             cad = json.loads(r.stdout)
+            acad = cad.get("autocad") or {}
+            oda = cad.get("oda") or {}
+            # dwg_to_dxf 取值：none / autocad / autocad-acad / oda（见 scripts/cad_env.py）
+            # 前端据此判定三态，故此处必须原样透传，不得简化成布尔——曾因前端把字符串
+            # 当真值判断，导致未安装 CAD 也显示为"正常"。
             data["cad"] = {
                 "dwg_to_dxf": cad.get("dwg_to_dxf", "unknown"),
                 "has_autocad": cad.get("autocad") is not None,
                 "has_oda": cad.get("oda") is not None,
+                "autocad_version": acad.get("version") or "",
+                "autocad_dir": acad.get("dir") or "",
+                "core_console": bool(acad.get("core_console")),
+                "oda_dir": oda.get("dir") or "",
+                "hints": [str(h) for h in (cad.get("hints") or [])][:4],
             }
     except Exception:  # noqa: BLE001
         pass

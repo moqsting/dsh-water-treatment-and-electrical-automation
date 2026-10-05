@@ -257,6 +257,27 @@ async function main() {
     }
   });
 
+  // 环境页的 CAD 一项按 dwg_to_dxf 的取值判三态。该字段是字符串，
+  // 曾用「!== "unknown"」当可用判据 → "none"（完全没装）也是非空字符串 → 恒为真 → 未装 CAD 也打勾。
+  // 这里锁死取值域与配套字段，防止再次退化成布尔式判断。
+  await check("2C-13 /api/env 的 cad 段给出三态判定所需字段", async () => {
+    const r = await request("/api/env");
+    if (r.status !== 200) throw new Error(`status=${r.status}`);
+    const cad = (JSON.parse(r.text).cad) || {};
+    const MODES = ["none", "autocad", "autocad-acad", "oda", "unknown"];
+    if (!MODES.includes(cad.dwg_to_dxf)) throw new Error(`dwg_to_dxf 取值非法：${cad.dwg_to_dxf}`);
+    for (const k of ["has_autocad", "has_oda", "core_console"]) {
+      if (typeof cad[k] !== "boolean") throw new Error(`${k} 应为布尔，实为 ${typeof cad[k]}`);
+    }
+    if (!Array.isArray(cad.hints)) throw new Error("hints 应为数组");
+    if (cad.dwg_to_dxf === "none" && cad.hints.length === 0) {
+      throw new Error("未检测到任何转换能力，却未给出可操作建议");
+    }
+    if ((cad.dwg_to_dxf === "autocad" || cad.dwg_to_dxf === "oda") && !(cad.has_autocad || cad.has_oda)) {
+      throw new Error(`声明可转换（${cad.dwg_to_dxf}）却未检测到对应程序`);
+    }
+  });
+
   // ---- 2D 工具运行链路（夹具写在输出目录内，用 @pack/ 寻址，不碰用户文件区） ----
   const FIX = (name) => packPath(path.join("reports", "ui", name));
   const disk = (name) => path.join(OUT_DIR, name);
