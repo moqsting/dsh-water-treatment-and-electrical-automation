@@ -21,15 +21,22 @@ class TestDeviceName(unittest.TestCase):
 
 
 class TestSafeResolve(unittest.TestCase):
-    def test_relative_inside_pack(self):
-        p = server.safe_resolve("integration-pack/README.md")
+    def test_pack_prefix_resolves_to_pack_root(self):
+        # 整合包内资源走 @pack/ 前缀。相对路径按契约优先落在「文件区」，
+        # 故包内资源不能用相对路径断言（原用例假定文件区恒为默认值，用户配置后必失败）。
+        p = server.safe_resolve("@pack/README.md")
         self.assertIsNotNone(p)
         self.assertEqual(p, (server.PACK_ROOT / "README.md").resolve())
+
+    def test_relative_resolves_under_active_workspace(self):
+        p = server.safe_resolve("integration-pack/README.md")
+        self.assertIsNotNone(p)
+        self.assertEqual(p, (server.active_workspace() / "integration-pack" / "README.md").resolve())
 
     def test_relative_inside_workspace(self):
         p = server.safe_resolve("AGENTS.md")
         self.assertIsNotNone(p)
-        self.assertEqual(p, (server.WORKSPACE_ROOT / "AGENTS.md").resolve())
+        self.assertEqual(p, (server.active_workspace() / "AGENTS.md").resolve())
 
     def test_dotdot_escape_rejected(self):
         # 从 integration-pack 逃到 C:\ 等外部 → 两个白名单根都不包含 → None
@@ -51,13 +58,13 @@ class TestSafeResolve(unittest.TestCase):
         self.assertIsNone(server.safe_resolve("COM1.txt"))
 
     def test_chinese_and_space_paths(self):
-        p = server.safe_resolve("integration-pack/模板 目录/中文 文件.txt")
+        p = server.safe_resolve("@pack/模板 目录/中文 文件.txt")
         self.assertIsNotNone(p)
         self.assertEqual(p, (server.PACK_ROOT / "模板 目录" / "中文 文件.txt").resolve())
 
     def test_empty_and_invalid(self):
-        # 2C 起：空路径 = 工作区根（合法默认值）；None 类型仍拒绝
-        self.assertEqual(server.safe_resolve(""), server.WORKSPACE_ROOT)
+        # 2C 起：空路径 = 当前文件区根（用户自定义优先）；None 类型仍拒绝
+        self.assertEqual(server.safe_resolve(""), server.active_workspace())
         self.assertIsNone(server.safe_resolve(None))
 
 

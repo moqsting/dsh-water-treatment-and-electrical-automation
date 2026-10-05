@@ -4,7 +4,49 @@
 
 > 作者：moqsting（GitHub）
 
-## 2.0.0（契约重构，进行中，未发布）
+## 2.2.0（工作台原生面板 + 离线依赖修复）
+
+### 变更
+
+- **工作台插件升级到 1.1.0**（提交 `0fe5b1ec`，插件仓库已发 v1.1.0）：UI 容器由第三方 better-sidebar Tab 改为 **DSH 原生主面板**——`main` slot 承载面板本体、`sidebar.panellist` slot 注册侧栏入口，与官方「插件」面板同机制、同渲染路径；侧栏图标移到顶部与「插件」并排，再次点击可折叠回对话；界面文案「工作区」全量改称「文件区」；文件预览改用 DSH 原生右侧栏文档预览。
+  为什么：原方案依赖第三方插件的 Tab 容器，工作台不是 DSH 的一等界面且受其版本约束；「工作区」与 DSH 自身的会话工作区重名，易混淆。
+  如何验证：整合包实例验收通过——插件模块内 `文件区=10`、`工作区=0`、`sidebar.panellist` 已注册；原生预览可用；插件仓库 `npm test` 5/5。
+- **移除工作台的「打开位置」按钮与 `/api/workbench/reveal` 路由**（前端 `revealInExplorer`/`parentDirOf`、host 端 `revealInFileManager`/`describeSpawnError`/`describeExitCode` 一并删除）。
+  为什么：该功能经 `explorer.exe` 调起系统文件管理器，在无交互式桌面会话的环境下进程可创建但窗口无法显示，且退出码不能反映窗口是否弹出（易误报成功）；DSH 原生预览面板已承担文件定位职责。
+  如何验证：`/api/workbench/reveal` 返回 404；前端 bundle 中已无该按钮与相关函数。
+
+### 修复
+
+- **pydeps 归档名版本失配导致离线依赖全部不可用**：`ui/server.py` 原硬编码 `PYDEP_TARBALL = "pydeps-2.0.0.tar.gz"`，而 2.1.0 起实际发布的是 `pydeps-2.1.0.tar.gz`。导入布局下 pydeps 目录只放 tar.gz、需惰性解压，查找失败即返回不完整目录，`PYTHONPATH` 指向空目录，`openpyxl`/`pandas`/`ezdxf` 等全部 import 失败——报价归一、报价比对、成本测算、差异核对等 Excel 工具必然报错。
+  为什么：归档名含整合包版本号，版本升级时未同步更新该常量。
+  修复：整函数重写 `pydeps_dir()`，改为按 `pydeps-*.tar.gz` 模式发现归档（多份时取最近修改者），以解压出 `openpyxl` 为准，不再硬编码版本号。
+  如何验证：导入布局实测 `openpyxl=True`；整合包实例 `/api/env` 由 `pydeps.ok=false（ModuleNotFoundError: No module named 'openpyxl'）` 变为 `pydeps.ok=true`。
+- **环境页技能计数在导入布局恒为 0**：原用 `PACK_ROOT / "skills"` 统计，而导入布局下 `PACK_ROOT = <profile>/wta`、该目录不存在（技能实际落在 `$DSH_HOME/skills`，共 11 个），环境页恒显示「技能 0 个」。
+  修复：新增 `skills_dir()`，按「开发落点 → 契约推导的导入落点（`PACK_ROOT` 上溯三级）→ `DSH_HOME` 兜底」顺序定位，且只接受确实含 `SKILL.md` 的目录。`DSH_HOME` 不作首选——它可能指向其它整合包的家目录（实测本机即指向 `better-deepseek-harness-codex`，会误取到 3 个技能）。
+  如何验证：两种布局均计数 11；实例 `/api/env` 由 `skills=0` 变为 `skills=11`。
+
+### 测试
+
+- `ui/tests/test_server.mjs` **整文件重写为密闭测试**：整合包内资源一律用 `@pack/` 前缀寻址（原用例写相对路径 `integration-pack/...`，而按契约相对路径优先落在「文件区」，用户一旦配置过文件区即 19 项失败）；输出断言改为「`reports/ui` 目录新增文件」（`/api/run` 的 `output` 字段随文件区配置在相对/绝对之间漂移）；已移除的静态前端相应用例改为断言 404 契约。
+  为什么：原用例依赖本机「未配置文件区 + 手工遗留夹具」的理想状态，换机器即红，不能作为验收依据。
+  如何验证：在**保留用户已配置文件区**的前提下 **43/43 通过**（改前 20/43）；测试不再改写用户文件区配置（原 4M 用例会把配置改成 `D:/DeepSeek Harness`，属破坏性副作用），并自动清理本次产生的输出文件。
+- `ui/tests/test_safety.py`：4 个用例改为断言契约（`active_workspace()`、`@pack/`）而非默认值常量，**13/13 通过**。
+- 新增 `ui/tests/make_fixtures.py`：按需生成 docx 预览夹具（原用例依赖手工遗留的 `reports/ui/4i-test.docx`，清空 `reports` 后即失败）。
+- `ui/tests/run_integration.ps1`：补 **UTF-8 BOM**（原文件无 BOM，Windows PowerShell 5.1 会按系统 ANSI 读取，中文注释乱码并解析失败，目标机未装 pwsh 7 时无法运行）；夹具改用脚本文件调用（`py -3 -c "<含中文代码>"` 在 Windows 下经 ANSI 往返会触发 `NameError`）；设 `PYTHONIOENCODING=utf-8` 修正子进程中文日志乱码。
+  如何验证：PowerShell 5.1 下 `-File` 完整跑通——「生成测试夹具」「端口回退集成验证」「HTTP 行为测试（43 项断言）」三步全过，输出「集成测试全部通过」。
+
+## 2.1.0（工作台 UI 内嵌）
+
+### 变更
+
+- **工作台插件 UI 内嵌 DSH（`dsh-engineering-workbench` 1.0.0）**：侧边栏按钮不再 `window.open` 单开浏览器，改为 better-sidebar Tab 内嵌 5 页面（工具/文件/资源/设置/环境）；目录选择用插件自包含的 Node fs 目录浏览器（跨平台，不依赖本机 PowerShell / directoryPicker 后端）；host 加 `/api/workbench/proxy/*` 反向代理。
+  为什么：可移植（不依赖本机环境）；对齐 DSH 内部 UI 规范（tender-workbench 同款 better-sidebar Tab）。
+  如何验证：`0.2.0-rc.2_test` 单独测插件通过（Tab + 5 页面 + 目录浏览器）；插件仓库已发正式版 v1.0.0。
+- **删除 server.py 旧前端 `static/`**：工作台 UI 内嵌 DSH 后，不再需要独立网页前端（`app.js`/`index.html`/`style.css`），保留全部 `/api/*` 后端。
+  为什么：UI 单一化（只在 DSH 内），避免两套前端维护。
+  如何验证：`server.py` 语法通过、`.dspack` 24 项自检通过、体积 116KB → 99KB。
+
+## 2.0.0（契约重构）
 
 ### 变更
 
@@ -36,17 +78,6 @@
   为什么：约束 5。
   如何验证：11/11 格式合规扫描通过。
 
-## 2.1.0（工作台 UI 内嵌，进行中，未发布）
-
-### 变更
-
-- **工作台插件 UI 内嵌 DSH（`dsh-engineering-workbench` 1.0.0）**：侧边栏按钮不再 `window.open` 单开浏览器，改为 better-sidebar Tab 内嵌 5 页面（工具/文件/资源/设置/环境）；目录选择用插件自包含的 Node fs 目录浏览器（跨平台，不依赖本机 PowerShell / directoryPicker 后端）；host 加 `/api/workbench/proxy/*` 反向代理。
-  为什么：可移植（不依赖本机环境）；对齐 DSH 内部 UI 规范（tender-workbench 同款 better-sidebar Tab）。
-  如何验证：`0.2.0-rc.2_test` 单独测插件通过（Tab + 5 页面 + 目录浏览器）；插件仓库已发正式版 v1.0.0。
-- **删除 server.py 旧前端 `static/`**：工作台 UI 内嵌 DSH 后，不再需要独立网页前端（`app.js`/`index.html`/`style.css`），保留全部 `/api/*` 后端。
-  为什么：UI 单一化（只在 DSH 内），避免两套前端维护。
-  如何验证：`server.py` 语法通过、`.dspack` 24 项自检通过、体积 116KB → 99KB。
-
 ## 1.2.1
 
 ### 变更
@@ -73,13 +104,13 @@
   - **自动定位工作台**：按 `DSH_HOME` 环境变量，或从插件所在位置向上推导 `profiles` + `skills` 同时存在的目录，免配置路径文件。
   - **pythonw 自动探测**（配置 → 环境变量 → `%LOCALAPPDATA%\Programs\Python\*` → `py -3` 推导同目录），并**捕获 spawn 异常**——插件失败不再导致宿主 DSH 崩溃。
 - **`.dspack` 自包含整合包**：技能 + 插件 + 完整工具链（工作台/脚本/模板/数据/文档）+ 离线依赖（`pydeps`）统一打进单个 `.dspack`，DSHL「手动安装整合包」一键导入即可用。
-- **工作区首次引导**：首次打开工作台弹出「选择工作区目录」对话框，支持**文件资源管理器**选择（`浏览…`）；选择后记录、实时同步到设置页，之后不再弹出。
-- **设置页「更改」按钮**：随时通过资源管理器重新选择工作区；仅在已设定工作区时显示「打开」按钮。
+- **文件区首次引导**：首次打开工作台弹出「选择文件区目录」对话框，支持**文件资源管理器**选择（`浏览…`）；选择后记录、实时同步到设置页，之后不再弹出。
+- **设置页「更改」按钮**：随时通过资源管理器重新选择文件区；仅在已设定文件区时显示「打开」按钮。
 - **后端资源清单 API**（`/api/resources`）：按整合包**实际内容**动态生成模板 / 参考数据 / 文档清单。
 
 ### 修复
 
-- **工作区设置真实生效**：修复空路径被硬编码为整合包父目录的问题（此前「打开」与文件页始终指向开发目录），并移除硬编码默认工作区。
+- **文件区设置真实生效**：修复空路径被硬编码为整合包父目录的问题（此前「打开」与文件页始终指向开发目录），并移除硬编码默认文件区。
 - **资源 / 文档路径 404**：引入 `@pack/` 前缀统一表示整合包内路径，修复导入后布局（`$DSH_HOME/wta`）下所有模板、参考数据、文档「找不到指定的文件或目录」。
 - **目录选择器弹出终端**：为目录选择子进程加 `CREATE_NO_WINDOW`，弹原生选择框时不再出现终端窗口。
 - **前端路径硬编码治理**：快捷目录 / 资源页 / 文档入口全部改为后端动态清单，前端零路径假设（开发布局与导入后布局一致）。

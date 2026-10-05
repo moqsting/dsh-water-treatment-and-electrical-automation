@@ -38,14 +38,14 @@ try {
   $dom = Get-Content $domFile -Raw -Encoding UTF8
   Write-Host "DOM bytes: $($dom.Length) ｜ 截图: $((Get-Item $shotFile).Length) bytes → $outDir"
   Check "页面标题(整合包工作台)" $dom.Contains("整合包工作台")
-  Check "工作区显示(JS 填充)" $dom.Contains("D:\DeepSeek Harness")
+  Check "文件区显示(JS 填充)" $dom.Contains("D:\DeepSeek Harness")
   Check "环境状态 Python 3.12.4" $dom.Contains("Python 3.12.4")
   Check "环境状态 依赖库正常" $dom.Contains("依赖库正常")
   Check "环境状态 技能数" $dom.Contains("技能")
   Check "常用功能卡(报价清单处理)" $dom.Contains("报价清单处理")
   Check "快捷目录(9 项)" (([regex]::Matches($dom, 'class="dir-item"')).Count -eq 9)
   Check "环境状态 chips(4 个)" (([regex]::Matches($dom, 'status-chip')).Count -eq 4)
-  Check "打开工作区按钮" $dom.Contains("打开工作区")
+  Check "打开文件区按钮" $dom.Contains("打开文件区")
 
   # 工具页（Phase 4：8 个工具表单动态渲染）
   $toolsDomFile = Join-Path $outDir "render-tools-dom.html"

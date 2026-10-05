@@ -29,13 +29,13 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PACK_ROOT = SCRIPT_DIR.parent
 
 NAME = "water-treatment-and-electrical-automation"
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 PROFILE_NAME = "wet-automation"
 DSH_VERSION = "0.2.0-rc.2"
 
-# 工作台按钮插件（npm 未发布，git commit sha 坐标）
+# 工作台插件（npm 未发布，git commit sha 坐标）
 PLUGIN_REPO = "github:moqsting/dsh-engineering-workbench"
-PLUGIN_SHA = "eb6d850cdbd6712abadc48a6a05b22f894fee9ee"
+PLUGIN_SHA = "0fe5b1ec01bd64cb59c953ae75648c0465005ece"
 PLUGIN_NAME = "dsh-engineering-workbench"
 
 # 招标工作台插件（npm 0.6.1 未发布，git commit sha 坐标；prepare 构建 lib/）
@@ -54,7 +54,7 @@ NPM_PLUGINS = {
     "@dsh-packforge/dsh-pack-plugin": "0.3.5",   # 官方规范导入器（整合包必备）
 }
 
-PYDEP_TARBALL = "pydeps-2.1.0.tar.gz"
+PYDEP_TARBALL = "pydeps-2.2.0.tar.gz"
 PYDEP_URL = ("https://github.com/moqsting/dsh-water-treatment-and-electrical-automation/"
              f"releases/download/v{VERSION}/{PYDEP_TARBALL}")
 
@@ -64,7 +64,7 @@ DISPLAY_NAME = {
 }
 DESCRIPTION = {
     "zh-CN": "水处理与电气自动化工程师 DSH 整合包：PLC 编程辅助、投标报价清单、招标与价格查询、"
-             "CAD 识图、工艺/电气计算、规范查询、本地工作台（侧边栏一键启停）",
+             "CAD 识图、工艺/电气计算、规范查询、本地工作台（DSH 原生面板）",
     "en-US": "Integration pack for water-treatment and electrical-automation engineers: "
              "PLC programming, bid/quotation sheets, tender & price query, CAD reading, "
              "process/electrical calcs, standards lookup, local workbench.",
@@ -85,7 +85,7 @@ def bundles_list() -> list:
     return [
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
-        PLUGIN_NAME,                       # 工作台按钮（git）
+        PLUGIN_NAME,                       # 工作台（DSH 原生主面板，git）
         "@michengai/dsh-skills-manager",
         "@michengai/dsh-automation",
         "dshmarket",
@@ -212,6 +212,10 @@ def self_check(m: dict, zip_path: Path) -> tuple:
     if m["files"]:
         e = m["files"][0]
         chk(bool(re.match(r"^pydeps/[^/]+$", e["path"])), "files[0].path 落在 pydeps/ 内")
+        # server.py 的 pydeps_dir() 按 pydeps-*.tar.gz 模式发现归档（不再硬编码版本号）；
+        # 此处守住同一契约，避免归档改名后运行期找不到包（2.1.0 曾因版本失配导致离线依赖全废）。
+        chk(bool(re.match(r"^pydeps/pydeps-.+\.tar\.gz$", e["path"])),
+            "files[0].path 匹配 server.py 的 pydeps-*.tar.gz 发现模式")
         chk(bool(re.match(r"^[0-9a-f]{64}$", e["sha256"])), "files[0].sha256 为 64 位 hex")
         chk(isinstance(e["size"], int) and e["size"] > 0, "files[0].size 为正整数")
         chk(all(u.startswith("https://") for u in e["urls"]), "files[0].urls 为 https 地址")

@@ -6,7 +6,7 @@ ui/server.py —— 整合包工作台本地服务（仅绑定 127.0.0.1）
 - 零第三方依赖（仅 Python 标准库）；
 - 只监听 127.0.0.1，不暴露局域网/公网；
 - 端口 8618 起自动回退（8619、8620...）；
-- 目录访问白名单（工作区根 + integration-pack），路径规范化防逃逸
+- 目录访问白名单（文件区根 + integration-pack），路径规范化防逃逸
   （拒绝 ../ 逃逸、绝对盘符、UNC、Windows 设备路径）；
 - 工具调用白名单 + 参数数组，禁止 shell 与任意命令。
 
@@ -42,34 +42,72 @@ if hasattr(sys.stderr, "reconfigure"):
 
 PACK_ROOT = Path(__file__).resolve().parent.parent          # integration-pack
 UI_ROOT = Path(__file__).resolve().parent                    # integration-pack/ui
-WORKSPACE_ROOT = PACK_ROOT.parent                            # 工作区根
-WS_CONFIG_PATH = PACK_ROOT / "config" / "ui-workspace.json"  # 用户自定义工作区配置
+WORKSPACE_ROOT = PACK_ROOT.parent                            # 文件区根
+WS_CONFIG_PATH = PACK_ROOT / "config" / "ui-workspace.json"  # 用户自定义文件区配置
 
 # pydeps 落点契约（由整合包 manifest files[] 声明、导入器下载）：
 #   导入布局（.dspack profile 形态）：<profile 根>/pydeps/（files[] 落点）
 #   开发布局：PACK_ROOT/pydeps/
 # 首次使用时若目录缺失但 tar.gz 已下载，惰性解压。
-PYDEP_TARBALL = "pydeps-2.0.0.tar.gz"
+# 归档名含整合包版本（pydeps-<版本>.tar.gz），故按模式发现，不硬编码版本号：
+# 早期硬编码 pydeps-2.0.0.tar.gz，2.1.0 改名后此处失配，导入布局下无法惰性解压，
+# PYTHONPATH 指向空目录，openpyxl/pandas/ezdxf 等离线依赖全部不可用。
+PYDEP_ARCHIVE_GLOB = "pydeps-*.tar.gz"
 
 
 def pydeps_dir():
-    """返回 pydeps 目录（两种布局兼容 + 惰性解压 tar.gz）。"""
+    """返回 pydeps 目录（两种布局兼容 + 惰性解压 tar.gz）。
+
+    先看候选目录是否已解压出 openpyxl；否则按模式查找归档并就地解压。
+    多个归档时取最近修改者优先，逐个尝试直到解压出 openpyxl。
+    """
     imported = PACK_ROOT.parent / "pydeps"   # 导入布局（manifest files[] 落点）
     dev = PACK_ROOT / "pydeps"               # 开发布局
-    for candidate in (imported, dev):
+    candidates = (imported, dev)
+    for candidate in candidates:
         if (candidate / "openpyxl").is_dir():
             return candidate
-    for candidate in (imported / PYDEP_TARBALL, dev / PYDEP_TARBALL):
-        if candidate.is_file():
+    for candidate in candidates:
+        if not candidate.is_dir():
+            continue
+        try:
+            archives = sorted(candidate.glob(PYDEP_ARCHIVE_GLOB),
+                              key=lambda p: p.stat().st_mtime, reverse=True)
+        except OSError:  # noqa: PERF203
+            continue
+        for archive in archives:
             try:
                 import tarfile
-                with tarfile.open(candidate, "r:gz") as t:
-                    t.extractall(candidate.parent, filter="data")
+                with tarfile.open(archive, "r:gz") as t:
+                    t.extractall(candidate, filter="data")
             except Exception:  # noqa: BLE001
                 continue
-            if (candidate.parent / "openpyxl").is_dir():
-                return candidate.parent
+            if (candidate / "openpyxl").is_dir():
+                return candidate
     return imported  # 兜底（目录可能存在但不完整）
+
+
+def skills_dir():
+    """返回技能目录（两种布局兼容）。
+
+    开发布局：PACK_ROOT/skills（integration-pack/skills）
+    导入布局：$DSH_HOME/skills——契约上 PACK_ROOT = $DSH_HOME/profiles/<profile>/wta，
+    故 $DSH_HOME = 自 PACK_ROOT 上溯三级。
+    顺序按布局可靠度：开发落点 → 导入落点（契约推导）→ DSH_HOME 环境变量兜底。
+    环境变量放最后：DSH_HOME 可能指向其它包的家目录（例如由别的整合包启动的宿主），
+    不能作为首选。仅接受确实含 SKILL.md 的目录。
+    """
+    candidates = [PACK_ROOT / "skills", PACK_ROOT.parent.parent.parent / "skills"]
+    home = os.environ.get("DSH_HOME")
+    if home:
+        candidates.append(Path(home) / "skills")
+    for candidate in candidates:
+        try:
+            if candidate.is_dir() and any(candidate.glob("*/SKILL.md")):
+                return candidate
+        except OSError:  # noqa: PERF203
+            continue
+    return None
 
 DEFAULT_PORT = 8618
 MAX_PORT_TRIES = 10
@@ -146,7 +184,7 @@ _env_cache = {"at": 0.0, "data": None}
 
 
 def configured_workspace():
-    """用户自定义工作区（config/ui-workspace.json，可随时修改）。无效或不存在时返回 None。"""
+    """用户自定义文件区（config/ui-workspace.json，可随时修改）。无效或不存在时返回 None。"""
     try:
         data = json.loads(WS_CONFIG_PATH.read_text(encoding="utf-8"))
         p = data.get("path")
@@ -160,7 +198,7 @@ def configured_workspace():
 
 
 def get_allowed_roots():
-    """目录白名单：用户自定义工作区（若配置）+ 工作区根 + 整合包根。"""
+    """目录白名单：用户自定义文件区（若配置）+ 文件区根 + 整合包根。"""
     roots = [WORKSPACE_ROOT, PACK_ROOT]
     ws = configured_workspace()
     if ws is not None and ws not in roots:
@@ -169,7 +207,7 @@ def get_allowed_roots():
 
 
 def active_workspace():
-    """当前工作区根：用户自定义工作区（若已配置），否则整合包父目录。"""
+    """当前文件区根：用户自定义文件区（若已配置），否则整合包父目录。"""
     return configured_workspace() or WORKSPACE_ROOT
 
 
@@ -202,7 +240,7 @@ def pack_resources():
 
     # 快捷目录：只返回实际存在的目录
     quick_defs = [
-        ("", "工作区", "你的项目目录"),
+        ("", "文件区", "你的项目目录"),
         ("reports", "reports", "招标日报与输出结果"),
         ("templates", "templates", "Excel 模板"),
         ("data", "data", "载流量/工艺参数/图例库"),
@@ -261,7 +299,7 @@ def safe_resolve(request_path: str):
     if not isinstance(request_path, str):
         return None
     if request_path == "":
-        return active_workspace()  # 空路径 = 当前工作区根（用户自定义优先）
+        return active_workspace()  # 空路径 = 当前文件区根（用户自定义优先）
     raw = request_path.replace("\\", "/").strip()
     if raw.startswith("//") or raw.startswith("\\\\"):
         return None
@@ -291,7 +329,7 @@ def safe_resolve(request_path: str):
 
 
 def rel_of(path: Path) -> str:
-    """绝对路径 → 相对当前工作区根的斜杠路径；不在工作区下则返回绝对路径。"""
+    """绝对路径 → 相对当前文件区根的斜杠路径；不在文件区下则返回绝对路径。"""
     ws = active_workspace()
     try:
         rel = path.relative_to(ws)
@@ -372,9 +410,9 @@ def env_status(force=False):
     except Exception:  # noqa: BLE001
         pass
 
-    skills_dir = PACK_ROOT / "skills"
-    if skills_dir.is_dir():
-        data["skills"] = len(list(skills_dir.glob("*/SKILL.md")))
+    sd = skills_dir()
+    if sd is not None:
+        data["skills"] = len(list(sd.glob("*/SKILL.md")))
     tender_dir = PACK_ROOT / "reports" / "tender"
     if tender_dir.is_dir():
         data["tender_reports"] = len(list(tender_dir.glob("*.md")))
@@ -818,7 +856,7 @@ def main():
     if pid_file is not None:
         pid_file.write_text(str(os.getpid()), encoding="utf-8")
     print(f"工作台已启动：http://127.0.0.1:{port}  （仅本机可访问，Ctrl+C 停止）")
-    print(f"工作区：{WORKSPACE_ROOT}")
+    print(f"文件区：{WORKSPACE_ROOT}")
     print(f"整合包：{PACK_ROOT}")
     if open_browser:
         try:
