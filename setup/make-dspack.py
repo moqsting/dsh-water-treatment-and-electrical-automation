@@ -57,7 +57,7 @@ OFFICE_REPO = "github:moqsting/dsh-office-toolkit"
 OFFICE_SHA = "81454e1f8e96a5b48a2462c794b2348fb3570d50"
 OFFICE_NAME = "dsh-office-toolkit"
 ELECTRO_REPO = "github:moqsting/dsh-electro-lab"
-ELECTRO_SHA = "3ee9b259edac9074552da5eed255ac84f074a4ff"
+ELECTRO_SHA = "5a232e3e35de37f0a6291fd7bcb7429dd688c419"
 ELECTRO_NAME = "dsh-electro-lab"
 
 # npm registry 已发布的插件（精确版本）
