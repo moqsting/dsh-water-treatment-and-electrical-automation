@@ -29,7 +29,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PACK_ROOT = SCRIPT_DIR.parent
 
 NAME = "water-treatment-and-electrical-automation"
-VERSION = "2.2.2"
+VERSION = "2.3.0"
 PROFILE_NAME = "wet-automation"
 DSH_VERSION = "0.2.0-rc.2"
 
@@ -43,6 +43,23 @@ TENDER_REPO = "github:moqsting/dsh-tender-workbench"
 TENDER_SHA = "21a6a85e043f4c8d67ad0f0d394f8737e3eb6989"
 TENDER_NAME = "dsh-tender-workbench"
 
+# 5 个新增插件（fork 修复后 git commit sha 坐标，见各自 MODIFICATIONS.md）
+CALC_REPO = "github:moqsting/dsh-tool-calculator"
+CALC_SHA = "3a089c12714f18d5c6b3044d23945368d0bcb518"
+CALC_NAME = "dsh-tool-calculator"
+CAD_REPO = "github:moqsting/dsh-cad"
+CAD_SHA = "4fb02b02cdc324eaa4d74c4b7cccc6ebfd2f2216"
+CAD_NAME = "dsh-cad"
+WPS_REPO = "github:moqsting/dsh-plugin-wps-office-next"
+WPS_SHA = "57034cf535566698b93bec96d517ebae2b1b10be"
+WPS_NAME = "dsh-plugin-wps-office-next"
+OFFICE_REPO = "github:moqsting/dsh-office-toolkit"
+OFFICE_SHA = "81454e1f8e96a5b48a2462c794b2348fb3570d50"
+OFFICE_NAME = "dsh-office-toolkit"
+ELECTRO_REPO = "github:moqsting/dsh-electro-lab"
+ELECTRO_SHA = "3ee9b259edac9074552da5eed255ac84f074a4ff"
+ELECTRO_NAME = "dsh-electro-lab"
+
 # npm registry 已发布的插件（精确版本）
 NPM_PLUGINS = {
     "@michengai/dsh-skills-manager": "1.1.8",
@@ -54,7 +71,7 @@ NPM_PLUGINS = {
     "@dsh-packforge/dsh-pack-plugin": "0.3.5",   # 官方规范导入器（整合包必备）
 }
 
-PYDEP_TARBALL = "pydeps-2.2.2.tar.gz"
+PYDEP_TARBALL = "pydeps-2.3.0.tar.gz"
 PYDEP_URL = ("https://github.com/moqsting/dsh-water-treatment-and-electrical-automation/"
              f"releases/download/v{VERSION}/{PYDEP_TARBALL}")
 
@@ -93,12 +110,22 @@ def bundles_list() -> list:
         "dsh-mcp-connector",               # 提供 mcp__qcc-tender__* 工具
         "dsh-better-sidebar",
         TENDER_NAME,                       # 招标工作台（消费工具，git）
+        CALC_NAME,                          # 计算器（fork，git）
+        OFFICE_NAME,                        # Office 读写（fork，git）
+        WPS_NAME,                           # WPS 办公（fork，git，条件启用）
+        CAD_NAME,                           # CAD 可视化（fork，git）
+        ELECTRO_NAME,                       # 电气计算（fork，git）
         "@dsh-packforge/dsh-pack-plugin",  # 官方导入器最后
     ]
 
 
 def dependencies_map() -> dict:
-    return {PLUGIN_REPO: PLUGIN_SHA, TENDER_REPO: TENDER_SHA, **NPM_PLUGINS}
+    return {
+        PLUGIN_REPO: PLUGIN_SHA, TENDER_REPO: TENDER_SHA,
+        CALC_REPO: CALC_SHA, CAD_REPO: CAD_SHA, WPS_REPO: WPS_SHA,
+        OFFICE_REPO: OFFICE_SHA, ELECTRO_REPO: ELECTRO_SHA,
+        **NPM_PLUGINS,
+    }
 
 
 def build_manifest() -> dict:
@@ -195,14 +222,23 @@ def self_check(m: dict, zip_path: Path) -> tuple:
     chk(m["type"] == "profile", "type == profile")
     chk(bool(re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", m["name"])), "name 为 kebab-case")
     chk(bool(re.match(r"^\d+\.\d+\.\d+$", m["version"])), "version 为 semver")
-    chk(PLUGIN_NAME in m["bundles"] and TENDER_NAME in m["bundles"] and "@dsh-packforge/dsh-pack-plugin" in m["bundles"],
-        "bundles 含工作台 + 招标工作台 + 官方 dsh-pack-plugin")
+    new_names = (CALC_NAME, CAD_NAME, WPS_NAME, OFFICE_NAME, ELECTRO_NAME)
+    chk(PLUGIN_NAME in m["bundles"] and TENDER_NAME in m["bundles"]
+        and all(n in m["bundles"] for n in new_names)
+        and "@dsh-packforge/dsh-pack-plugin" in m["bundles"],
+        "bundles 含工作台 + 招标 + 5 个新插件 + 官方 dsh-pack-plugin")
+    # 5 个新插件位于 dsh-web-app 之后、官方导入器之前（靠后挂载）
+    web_idx = m["bundles"].index("@deepseek-ai/dsh-web-app") if "@deepseek-ai/dsh-web-app" in m["bundles"] else -1
+    pack_idx = m["bundles"].index("@dsh-packforge/dsh-pack-plugin") if "@dsh-packforge/dsh-pack-plugin" in m["bundles"] else -1
+    new_idx = [m["bundles"].index(n) for n in new_names if n in m["bundles"]]
+    chk(bool(new_idx) and web_idx >= 0 and pack_idx >= 0 and all(web_idx < i < pack_idx for i in new_idx),
+        "bundles 顺序：5 个新插件位于 dsh-web-app 之后、dsh-pack-plugin 之前")
     # 挂载顺序：dsh-mcp-connector 必须在 dsh-tender-workbench 之前（提供方先于消费方）
     bi = m["bundles"].index("dsh-mcp-connector") if "dsh-mcp-connector" in m["bundles"] else -1
     bt = m["bundles"].index(TENDER_NAME) if TENDER_NAME in m["bundles"] else -1
     chk(0 <= bi < bt, "bundles 顺序：dsh-mcp-connector 先于 dsh-tender-workbench")
-    # 依赖：2 个 git 坐标 40 位 sha（工作台 + 招标）+ npm 精确版本
-    for coord in (PLUGIN_REPO, TENDER_REPO):
+    # 依赖：7 个 git 坐标 40 位 sha（工作台 + 招标 + 5 个新插件）+ npm 精确版本
+    for coord in (PLUGIN_REPO, TENDER_REPO, CALC_REPO, CAD_REPO, WPS_REPO, OFFICE_REPO, ELECTRO_REPO):
         dep = m["dependencies"].get(coord)
         chk(bool(re.match(r"^[0-9a-f]{40}$", dep or "")), f"dependencies 的 {coord} 为 40 位 commit sha")
     chk(all(re.match(r"^\d+\.\d+\.\d+$", m["dependencies"].get(k, "")) for k in NPM_PLUGINS),

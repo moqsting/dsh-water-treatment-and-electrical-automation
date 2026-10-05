@@ -4,6 +4,25 @@
 
 > 作者：moqsting（GitHub）
 
+## 2.3.0（新增 5 个插件：计算 / CAD / WPS / Office / 电气）
+
+### 变更
+
+- **纳入 5 个插件**（全部 fork 到 `github:moqsting/<原名>`、做安全修复后以 git 40 位 SHA 坐标集成）：
+  | 插件 | 上游 | fork SHA | 处置 |
+  |---|---|---|---|
+  | dsh-tool-calculator | omdsh-dev | `3a089c12` | 去官方 scope + peer 范围放宽 |
+  | dsh-cad | LAU-MARS | `4fb02b02` | 移除 cad_script、写路径围栏、同源守卫 |
+  | dsh-plugin-wps-office-next | sueecku | `57034cf5` | PDF 打开拦截、去逃生舱、confirm 闸门、真实探测（条件启用） |
+  | dsh-office-toolkit | cnkids | `81454e1f` | add_image 崩溃修复 + 锁依赖 |
+  | dsh-electro-lab | curtainsmall | `3ee9b259` | 同源守卫、输出路径越界、去外部求解器、cordis scope |
+  为什么：扩展整合包能力（计算 / CAD 识图 / Office 读写 / WPS / 电气计算），均按安全审查结论 fork 修复（约束#3）。
+  如何验证：各 fork 跑作者测试（calculator 31/31、cad 151/152、office 139/140 预存 1 失败、WPS 静态验证）；`.dspack` 自检 30 项全过（含 5 个新插件 bundles/deps/顺序断言）。
+
+### 已知限制（需后续处理）
+
+- **dsh-electro-lab 的 `lib/` 构建产物未提交**：本机受限沙箱无法运行 `pnpm build`（pnpm store 操作锁位于工作区外 + tsdown spawn EPERM，约束#7）。源码安全修复已提交，但 git 安装需要 `lib/`；需在干净环境 `pnpm install && pnpm build` 后补提交 lib/ 并回填新 SHA。在此之前，dsh-electro-lab 无法通过 git 坐标加载。
+
 ## 2.2.2（环境页重写 + CAD 误判修复）
 
 ### 变更
