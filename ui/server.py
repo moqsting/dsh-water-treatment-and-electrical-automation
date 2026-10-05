@@ -223,6 +223,10 @@ def pack_resources():
 
     前端不硬编码任何路径/目录名：开发布局（…/integration-pack）与导入后布局
     （$DSH_HOME/wta）都按实际扫描结果返回，缺什么就少什么。
+
+    每项同时给出两种标识，用途不同：
+      rel —— 供后端接口寻址（@pack/<子目录>/<文件>；空串表示「文件区」根）
+      abs —— 供前端调用 DSH 原生预览（右侧栏文档预览要求文件系统绝对路径）
     """
 
     def list_files(sub, exts=None):
@@ -233,7 +237,8 @@ def pack_resources():
         for p in sorted(base.iterdir(), key=lambda x: x.name):
             try:
                 if p.is_file() and (exts is None or p.suffix.lower() in exts):
-                    out.append({"name": p.name, "rel": f"@pack/{sub}/{p.name}", "note": ""})
+                    out.append({"name": p.name, "rel": f"@pack/{sub}/{p.name}",
+                                "abs": p.as_posix(), "note": ""})
             except OSError:
                 continue
         return out
@@ -253,9 +258,11 @@ def pack_resources():
     quick = []
     for sub, name, note in quick_defs:
         if sub == "":
-            quick.append({"rel": "", "name": name, "note": note})
+            quick.append({"rel": "", "abs": active_workspace().as_posix(),
+                          "name": name, "note": note})
         elif (PACK_ROOT / sub).is_dir():
-            quick.append({"rel": f"@pack/{sub}", "name": name, "note": note})
+            quick.append({"rel": f"@pack/{sub}", "abs": (PACK_ROOT / sub).as_posix(),
+                          "name": name, "note": note})
 
     groups = []
     templates = list_files("templates", {".xlsx", ".xlsm"})
@@ -265,12 +272,16 @@ def pack_resources():
     if data:
         groups.append({"title": "参考数据", "items": data})
     docs = []
-    if (PACK_ROOT / "README.md").is_file():
-        docs.append({"name": "操作手册（README）", "rel": "@pack/README.md", "note": "安装、使用、故障排查"})
+    readme = PACK_ROOT / "README.md"
+    if readme.is_file():
+        docs.append({"name": "操作手册（README）", "rel": "@pack/README.md",
+                     "abs": readme.as_posix(), "note": "安装、使用、故障排查"})
     for it in list_files("docs", {".md"}):
-        docs.append({"name": it["name"], "rel": it["rel"], "note": "文档"})
-    if (PACK_ROOT / "plugins" / "插件清单.md").is_file():
-        docs.append({"name": "插件清单", "rel": "@pack/plugins/插件清单.md", "note": "随包插件与备选清单"})
+        docs.append({"name": it["name"], "rel": it["rel"], "abs": it["abs"], "note": "文档"})
+    manifest = PACK_ROOT / "plugins" / "插件清单.md"
+    if manifest.is_file():
+        docs.append({"name": "插件清单", "rel": "@pack/plugins/插件清单.md",
+                     "abs": manifest.as_posix(), "note": "随包插件与备选清单"})
     if docs:
         groups.append({"title": "文档", "items": docs})
 
@@ -438,10 +449,12 @@ def list_dir_json(rel: str):
                 "type": "dir" if child.is_dir() else "file",
                 "size": child.stat().st_size if child.is_file() else None,
                 "rel": rel_of(child),
+                # 绝对路径：供前端调用 DSH 原生预览（右侧栏预览要求文件系统绝对路径）
+                "abs": child.as_posix(),
             })
         except OSError:
             continue
-    return {"rel": rel, "exists": True, "is_dir": True, "entries": entries}
+    return {"rel": rel, "abs": target.as_posix(), "exists": True, "is_dir": True, "entries": entries}
 
 
 def preview_file_json(rel: str):

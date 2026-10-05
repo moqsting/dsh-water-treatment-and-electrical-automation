@@ -34,9 +34,19 @@ Step "生成测试夹具（docx）" {
 }
 
 # ── 集成断言 1：端口占用时自动回退（8618 被占 → 实际端口 != 8618）──
+# 8618 可能已被其他进程占用（例如用户实例的工作台后端正在运行）：此时回退条件本就成立，
+# 不必也不该自建占位监听（会因端口已占用而抛错，误报为测试失败）。
 Step "端口回退集成验证" {
-    $blocker = [System.Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 8618)
-    $blocker.Start()
+    $blocker = $null
+    $weBlocked = $false
+    try {
+        $blocker = [System.Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 8618)
+        $blocker.Start()
+        $weBlocked = $true
+    } catch {
+        Write-Host "  8618 已被其他进程占用（非本脚本占位），直接验证回退"
+        $blocker = $null
+    }
     try {
         $job = Start-Job -ScriptBlock { param($s, $p) py -3 $s --port-file $p } -ArgumentList $server, $tmpPort
         try {
@@ -54,7 +64,7 @@ Step "端口回退集成验证" {
             Start-Sleep -Milliseconds 300
         }
     } finally {
-        $blocker.Stop()
+        if ($weBlocked -and $blocker) { $blocker.Stop() }
     }
 }
 

@@ -230,6 +230,33 @@ async function main() {
     if (j.skills < 7) throw new Error(`skills=${j.skills}（应 ≥7）`);
   });
 
+  // 资源页/文件页的原生预览要求文件系统绝对路径：@pack/... 只是后端寻址标识，
+  // 直接塞进 DSH 的资源地址会被当会话相对路径解析。以下两条守住 abs 字段。
+  await check("2C-11 /api/resources 每项都给出 abs 绝对路径", async () => {
+    const r = await request("/api/resources");
+    if (r.status !== 200) throw new Error(`status=${r.status}`);
+    const j = JSON.parse(r.text);
+    const all = (j.quickDirs || []).concat((j.groups || []).reduce((a, g) => a.concat(g.items || []), []));
+    if (!all.length) throw new Error("资源清单为空");
+    for (const it of all) {
+      if (typeof it.abs !== "string" || !path.isAbsolute(it.abs)) {
+        throw new Error(`缺少绝对路径 abs：${JSON.stringify(it).slice(0, 120)}`);
+      }
+    }
+  });
+
+  await check("2C-12 /api/dirs 条目都给出 abs 绝对路径", async () => {
+    const r = await request("/api/dirs?" + q("@pack/templates"));
+    if (r.status !== 200) throw new Error(`status=${r.status}`);
+    const j = JSON.parse(r.text);
+    if (!j.entries.length) throw new Error("模板目录为空");
+    for (const it of j.entries) {
+      if (typeof it.abs !== "string" || !path.isAbsolute(it.abs)) {
+        throw new Error(`缺少绝对路径 abs：${JSON.stringify(it).slice(0, 120)}`);
+      }
+    }
+  });
+
   // ---- 2D 工具运行链路（夹具写在输出目录内，用 @pack/ 寻址，不碰用户文件区） ----
   const FIX = (name) => packPath(path.join("reports", "ui", name));
   const disk = (name) => path.join(OUT_DIR, name);
