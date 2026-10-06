@@ -4,6 +4,15 @@
 
 > 作者：moqsting（GitHub）
 
+## 2.3.5（技能调整：移除作者元数据设定，新增 file-conventions）
+
+### 变更
+
+- **删除**对话技能 `moqsting-metadata`，并同步删除 `AGENTS.md` 原第 2 节「作者元数据」整节，以及 `README.md` 技能表中对应的「作者元数据」行。
+  为什么：该技能与约定要求“为 moqsting 的项目生成或交付文件时一律标注作者 moqsting”——这是 **moqsting 内部惯例**，却随包分发给水处理/电气自动化工程师用户，会让用户把自己的文件标成 moqsting，属于不该随包外发的设定。整合包自身的作者信息（`pack.json` 的 `author` 字段、`README.md` 与 `CHANGELOG.md` 顶部的作者行）是包自身的署名，保留不动。
+- **新增**对话技能 `file-conventions`：文件信任（`Unblock-File` 解除 Windows 不受信任标记，受限环境如实说明并请求授权）+ UTF-8 编码铁律（优先 read/edit/write 工具，禁止 shell 全文重写或批量替换，并写明原因与受限环境的正确写法）。`AGENTS.md` 原第 3 节「文件信任与编码」升为第 2 节，其后各节顺次重编号，「关联技能」中的 `moqsting-metadata` 改指 `file-conventions`。
+  如何验证：`setup/make-dspack.py` 自检含“home/skills 含 14 个技能”且全 PASS（删 1 增 1、净数不变）；新 SKILL.md 符合约束 #5（纯文本段落、无表格/加粗/多级标题、≤80 行）；重建的 `.dspack` 中 `moqsting-metadata` 已消失、`file-conventions` 已就位。
+
 ## 2.3.4（新增 verification-before-completion 与 brainstorming 两个技能）
 
 ### 变更

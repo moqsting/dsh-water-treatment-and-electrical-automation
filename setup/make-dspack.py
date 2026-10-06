@@ -29,7 +29,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PACK_ROOT = SCRIPT_DIR.parent
 
 NAME = "water-treatment-and-electrical-automation"
-VERSION = "2.3.4"
+VERSION = "2.3.5"
 PROFILE_NAME = "wet-automation"
 DSH_VERSION = "0.2.0-rc.2"
 
@@ -71,7 +71,7 @@ NPM_PLUGINS = {
     "@dsh-packforge/dsh-pack-plugin": "0.3.5",   # 官方规范导入器（整合包必备）
 }
 
-PYDEP_TARBALL = "pydeps-2.3.4.tar.gz"
+PYDEP_TARBALL = "pydeps-2.3.5.tar.gz"
 PYDEP_URL = ("https://github.com/moqsting/dsh-water-treatment-and-electrical-automation/"
              f"releases/download/v{VERSION}/{PYDEP_TARBALL}")
 
