@@ -4,6 +4,20 @@
 
 > 作者：moqsting（GitHub）
 
+## 2.3.6（下载源加国内镜像）
+
+### 变更
+
+- `.dspack` 的 `files[].urls` 从单一 GitHub 源改为多源：优先国内镜像 `gh-proxy.com` 与其 CDN 域名 `cdn.gh-proxy.com`（实测可直连、字节数完全匹配），GitHub 原生源放在最后作权威回退。
+  为什么：原设计只有 GitHub 一个源，国内无代理环境直连会超时（本机实测直连 GitHub 为连接超时）；导入器逐个尝试 `urls`、成功即止，所以把快的源放前面即可实现"慢或不通就换"。
+  如何验证：实测 `gh-proxy.com` 与 `cdn.gh-proxy.com` 对本包 v2.3.5 资产的 HEAD 请求均返回 200 且 `content-length` 与本地一致（31,964,060 字节）；`make-dspack.py` 自检新增两条断言（urls 含国内镜像源、含 GitHub 权威回退）并全 PASS。
+  安全：多源共用 manifest 里的 `sha256` 校验，镜像即使返回被篡改的内容也会校验失败，不降低完整性保证。
+
+### 说明
+
+- 镜像只覆盖 `files[]`（pydeps 压缩包约 30MB，占导入下载量的绝大部分）。插件依赖（`github:moqsting/dsh-*`）由导入器的包管理器自行从 GitHub 拉取，不走 `files[].urls`；对这类依赖，导入器提供的是**代理**支持（设置项 `config.proxy` / 环境变量 `HTTP_PROXY` / Windows 系统代理，三档优先级），不是镜像。
+- 镜像为第三方托管、可能变动；某个域名失效时改 `setup/make-dspack.py` 的 `PYDEP_MIRRORS` 后重发即可。
+
 ## 2.3.5（技能调整：移除作者元数据设定，新增 file-conventions）
 
 ### 变更

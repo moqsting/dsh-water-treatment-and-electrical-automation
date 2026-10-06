@@ -29,7 +29,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PACK_ROOT = SCRIPT_DIR.parent
 
 NAME = "water-treatment-and-electrical-automation"
-VERSION = "2.3.5"
+VERSION = "2.3.6"
 PROFILE_NAME = "wet-automation"
 DSH_VERSION = "0.2.0-rc.2"
 
@@ -71,9 +71,17 @@ NPM_PLUGINS = {
     "@dsh-packforge/dsh-pack-plugin": "0.3.5",   # 官方规范导入器（整合包必备）
 }
 
-PYDEP_TARBALL = "pydeps-2.3.5.tar.gz"
+PYDEP_TARBALL = "pydeps-2.3.6.tar.gz"
 PYDEP_URL = ("https://github.com/moqsting/dsh-water-treatment-and-electrical-automation/"
              f"releases/download/v{VERSION}/{PYDEP_TARBALL}")
+
+# 下载源顺序（导入器逐个尝试，成功即止）：镜像在前（国内可直连、快），GitHub 原生在后做权威回退。
+# 同一加速服务的两个域名互为备份；所有源共用 manifest 里的 sha256 校验，镜像即使投毒也会被拒。
+PYDEP_MIRRORS = [
+    f"https://gh-proxy.com/{PYDEP_URL}",
+    f"https://cdn.gh-proxy.com/{PYDEP_URL}",
+]
+PYDEP_URLS = [*PYDEP_MIRRORS, PYDEP_URL]
 
 DISPLAY_NAME = {
     "zh-CN": "水处理与电气自动化整合包",
@@ -136,7 +144,7 @@ def build_manifest() -> dict:
         "path": f"pydeps/{PYDEP_TARBALL}",
         "sha256": sha256_of(tar),
         "size": tar.stat().st_size,
-        "urls": [PYDEP_URL],
+        "urls": list(PYDEP_URLS),
     }]
     return {
         "manifestVersion": 5,
@@ -255,6 +263,8 @@ def self_check(m: dict, zip_path: Path) -> tuple:
         chk(bool(re.match(r"^[0-9a-f]{64}$", e["sha256"])), "files[0].sha256 为 64 位 hex")
         chk(isinstance(e["size"], int) and e["size"] > 0, "files[0].size 为正整数")
         chk(all(u.startswith("https://") for u in e["urls"]), "files[0].urls 为 https 地址")
+        chk(any("gh-proxy.com" in u for u in e["urls"]), "files[0].urls 含国内镜像源（gh-proxy.com）")
+        chk(any(u.startswith("https://github.com/") for u in e["urls"]), "files[0].urls 含 GitHub 权威源作回退")
 
     with zipfile.ZipFile(zip_path) as z:
         names = z.namelist()
