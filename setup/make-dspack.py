@@ -29,7 +29,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PACK_ROOT = SCRIPT_DIR.parent
 
 NAME = "water-treatment-and-electrical-automation"
-VERSION = "2.3.1"
+VERSION = "2.3.2"
 PROFILE_NAME = "wet-automation"
 DSH_VERSION = "0.2.0-rc.2"
 
@@ -51,7 +51,7 @@ CAD_REPO = "github:moqsting/dsh-cad"
 CAD_SHA = "602cef5c0a61b340f395397a5342c1860c2ab1c4"
 CAD_NAME = "dsh-cad"
 WPS_REPO = "github:moqsting/dsh-plugin-wps-office-next"
-WPS_SHA = "57034cf535566698b93bec96d517ebae2b1b10be"
+WPS_SHA = "85fd9df2762f23d7e93af171cc0bd9bcadf1bdb7"
 WPS_NAME = "dsh-plugin-wps-office-next"
 OFFICE_REPO = "github:moqsting/dsh-office-toolkit"
 OFFICE_SHA = "81454e1f8e96a5b48a2462c794b2348fb3570d50"
@@ -71,7 +71,7 @@ NPM_PLUGINS = {
     "@dsh-packforge/dsh-pack-plugin": "0.3.5",   # 官方规范导入器（整合包必备）
 }
 
-PYDEP_TARBALL = "pydeps-2.3.1.tar.gz"
+PYDEP_TARBALL = "pydeps-2.3.2.tar.gz"
 PYDEP_URL = ("https://github.com/moqsting/dsh-water-treatment-and-electrical-automation/"
              f"releases/download/v{VERSION}/{PYDEP_TARBALL}")
 

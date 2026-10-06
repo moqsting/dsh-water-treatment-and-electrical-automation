@@ -4,6 +4,14 @@
 
 > 作者：moqsting（GitHub）
 
+## 2.3.2（WPS 处置改为方案 B：只移除逃生舱）
+
+### 变更
+
+- **dsh-plugin-wps-office-next** `57034cf5` → `85fd9df2`：处置改为**方案 B** —— 只移除 `wps_execute_method` 逃生舱，**保留 `wps_call` / `wps_batch` 门面**。
+  为什么：审计 R3 的病灶是逃生舱（绕过全部参数校验、可经 `wps_call` 两步触达任意原始 COM 方法）；只删逃生舱即可闭合漏洞。整条 facade 一起删会使 183 个隐藏工具不可达，并使该 fork 自带的技能 / 文档 / 验证脚本（250+ 处）失真、其自身 `verify` / `verify-package` / `gen-numbers` 全部报错。
+  如何验证（放宽本机沙箱以允许 spawn 后实跑）：`scripts/verify.mjs` 22/24（2 项仅因本机未装 WPS）、`scripts/verify-package.mjs` 11/11 OK（tools=84）、`scripts/gen-numbers.mjs --check` CLAIMS OK (16) + 生成文件差异（无）、`scripts/lint.mjs` 0 违规。R5 真实探测（`connected` 取自 `getAppInfo`）保留。
+
 ## 2.3.1（写路径链接纵深加固）
 
 ### 变更
