@@ -29,7 +29,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PACK_ROOT = SCRIPT_DIR.parent
 
 NAME = "water-treatment-and-electrical-automation"
-VERSION = "2.3.0"
+VERSION = "2.3.1"
 PROFILE_NAME = "wet-automation"
 DSH_VERSION = "0.2.0-rc.2"
 
@@ -48,7 +48,7 @@ CALC_REPO = "github:moqsting/dsh-tool-calculator"
 CALC_SHA = "3a089c12714f18d5c6b3044d23945368d0bcb518"
 CALC_NAME = "dsh-tool-calculator"
 CAD_REPO = "github:moqsting/dsh-cad"
-CAD_SHA = "4fb02b02cdc324eaa4d74c4b7cccc6ebfd2f2216"
+CAD_SHA = "602cef5c0a61b340f395397a5342c1860c2ab1c4"
 CAD_NAME = "dsh-cad"
 WPS_REPO = "github:moqsting/dsh-plugin-wps-office-next"
 WPS_SHA = "57034cf535566698b93bec96d517ebae2b1b10be"
@@ -57,7 +57,7 @@ OFFICE_REPO = "github:moqsting/dsh-office-toolkit"
 OFFICE_SHA = "81454e1f8e96a5b48a2462c794b2348fb3570d50"
 OFFICE_NAME = "dsh-office-toolkit"
 ELECTRO_REPO = "github:moqsting/dsh-electro-lab"
-ELECTRO_SHA = "5a232e3e35de37f0a6291fd7bcb7429dd688c419"
+ELECTRO_SHA = "4b34aa56387e36abce518832144a9a3ba1f9d7f8"
 ELECTRO_NAME = "dsh-electro-lab"
 
 # npm registry 已发布的插件（精确版本）
@@ -71,7 +71,7 @@ NPM_PLUGINS = {
     "@dsh-packforge/dsh-pack-plugin": "0.3.5",   # 官方规范导入器（整合包必备）
 }
 
-PYDEP_TARBALL = "pydeps-2.3.0.tar.gz"
+PYDEP_TARBALL = "pydeps-2.3.1.tar.gz"
 PYDEP_URL = ("https://github.com/moqsting/dsh-water-treatment-and-electrical-automation/"
              f"releases/download/v{VERSION}/{PYDEP_TARBALL}")
 
