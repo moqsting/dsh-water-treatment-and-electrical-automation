@@ -4,6 +4,20 @@
 
 > 作者：moqsting（GitHub）
 
+## 2.3.1（写路径链接纵深加固）
+
+### 变更
+
+- **dsh-cad** `602cef5c`、**dsh-electro-lab** `4b34aa5`：写/输出路径的 realpath 校验改用 `realpathSync.native`。
+  为什么：普通 `realpathSync` 在 Windows 上**不解析 junction**（实测返回 junction 自身路径），而 junction 是不需管理员即可创建的逃逸路径——这才是 Windows 上实际的越界写向量。
+  如何验证：cad `npx vitest run` → 153 passed（另 1 项为预存沙箱限制：`installFusionBridge` 需写工作区外的 `%APPDATA%\Autodesk`）+ 新增 junction 逃逸回归；electro `npx vitest run` → 30 文件 / **346 tests 全过**（含新增 `output-path.test.ts` 5 项、`validate-declaration.test.ts` C3 回归）；端到端冒烟用 junction 构造逃逸被 400 拒绝、outputRoot 内合法目录放行。
+- dsh-electro-lab：输出路径校验前移到 `beginGenerate`（fail-fast，不浪费 LLM token），并在写入前再校验一次。
+- dsh-electro-lab `MODIFICATIONS.md`：措辞与实现对齐。
+
+### 已知项（待决策）
+
+- **dsh-plugin-wps-office-next 维持 `57034cf5`**：其 `wps_call`/`wps_batch` 移除后，该 fork 自带的 README / 4 个技能 / 4 个 reference.md / docs（250+ 处）及自带验证脚本仍按旧工具面描述，尚待决策（A：更新文档与脚本期望值；B：只删真正的逃生舱 `wps_execute_method`、保留 facade）。该插件为**条件启用**（需 WPS Office 12.1+ 64 位），在无 WPS 的目标机上其工具不生效，故本条不影响核心可用性。
+
 ## 2.3.0（新增 5 个插件：计算 / CAD / WPS / Office / 电气）
 
 ### 变更
