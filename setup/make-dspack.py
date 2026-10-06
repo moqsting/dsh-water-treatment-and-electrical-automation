@@ -29,7 +29,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PACK_ROOT = SCRIPT_DIR.parent
 
 NAME = "water-treatment-and-electrical-automation"
-VERSION = "2.3.2"
+VERSION = "2.3.3"
 PROFILE_NAME = "wet-automation"
 DSH_VERSION = "0.2.0-rc.2"
 
@@ -71,7 +71,7 @@ NPM_PLUGINS = {
     "@dsh-packforge/dsh-pack-plugin": "0.3.5",   # 官方规范导入器（整合包必备）
 }
 
-PYDEP_TARBALL = "pydeps-2.3.2.tar.gz"
+PYDEP_TARBALL = "pydeps-2.3.3.tar.gz"
 PYDEP_URL = ("https://github.com/moqsting/dsh-water-treatment-and-electrical-automation/"
              f"releases/download/v{VERSION}/{PYDEP_TARBALL}")
 
@@ -267,7 +267,7 @@ def self_check(m: dict, zip_path: Path) -> tuple:
         chk("overrides/wta/ui/server.py" in names, "overrides/wta/ui/server.py 存在（工作台）")
         chk("home/AGENTS.md" in names, "home/AGENTS.md 存在（全局指令）")
         skills = [n for n in names if n.startswith("home/skills/") and n.endswith("SKILL.md")]
-        chk(len(skills) == 11, f"home/skills 含 11 个技能（实际 {len(skills)}）")
+        chk(len(skills) == 12, f"home/skills 含 12 个技能（实际 {len(skills)}）")
         chk(not any("node_modules" in n for n in names), "不含 node_modules（依赖由导入器重建）")
         chk(not any("pydeps/" in n for n in names), "不含 pydeps（走 files[] 指针）")
         chk(not any(n.startswith("home/.credentials") or n.startswith("home/settings.yaml") for n in names),

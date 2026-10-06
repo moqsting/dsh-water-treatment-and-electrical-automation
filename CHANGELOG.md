@@ -4,6 +4,15 @@
 
 > 作者：moqsting（GitHub）
 
+## 2.3.3（新增 karpathy-guidelines 技能）
+
+### 变更
+
+- 新增对话技能 `karpathy-guidelines`：转录并改写自 GitHub 仓库 `multica-ai/andrej-karpathy-skills`（作者 forrestchang，声明 MIT）。
+  为什么：整合包的编码类任务（PLC 程序、脚本、工作台扩展）此前缺少"少犯错"的行为约束；该准则源于 Andrej Karpathy 对 LLM 编码通病的观察，覆盖四条——先想清再动手、简单优先、外科式改动、目标驱动执行。
+  如何验证：`setup/make-dspack.py` 自检含"home/skills 含 12 个技能"且全 PASS；改写后的 SKILL.md 符合约束 #5（纯文本段落、无表格/加粗/多级标题、≤80 行）；同一份内容已安装到当前实例的 skills 目录并被技能目录即时识别。
+  合规说明：上游仅在 `.claude-plugin/plugin.json` 与 SKILL.md frontmatter 两处声明 MIT、**未提供 LICENSE 文件**；本包按"两处声明即 MIT"处理，并在 SKILL.md 正文末注明作者与出处。
+
 ## 2.3.2（WPS 处置改为方案 B：只移除逃生舱）
 
 ### 变更

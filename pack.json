@@ -7,7 +7,7 @@
   "type": "dsh-pack",
   "dshVersion": "0.2.0-rc.2",
   "components": {
-    "skills": "11 个对话技能（skills/，安装后注册到 DSH 技能目录）",
+    "skills": "12 个对话技能（skills/，安装后注册到 DSH 技能目录）",
     "plugin": "工作台插件（独立仓库 github:moqsting/dsh-engineering-workbench，以 git commit 坐标声明依赖；DSH 原生主面板承载工作台界面）",
     "workbench": "本地工作台后端（ui/server.py，8 个工具一键运行 + 文件浏览/预览 + 文件区管理；前端已内嵌进 DSH，无独立静态页面）",
     "scripts": "Python 工具链（scripts/，runpy.cmd 统一入口）",
