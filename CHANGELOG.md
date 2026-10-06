@@ -4,6 +4,15 @@
 
 > 作者：moqsting（GitHub）
 
+## 2.3.4（新增 verification-before-completion 与 brainstorming 两个技能）
+
+### 变更
+
+- 新增对话技能 `verification-before-completion`（源 3.6KB）与 `brainstorming`（源 17.5KB），均转录并**压缩改写**自 GitHub 仓库 `obra/superpowers`（作者 obra，MIT 许可，仓库根含 LICENSE 文件）。
+  为什么：整合包此前缺两条工作方法约束——"声明完成前必须拿到新鲜验证证据"，以及"动手实现前先把需求谈成对方可确认的设计"。前者与整合包约束 #6（干净环境验收）天然呼应，后者可减少返工。
+  如何验证：`setup/make-dspack.py` 自检含"home/skills 含 14 个技能"且全 PASS；两份 SKILL.md 均符合约束 #5（纯文本段落、无表格/加粗/多级标题、≤80 行）；同一份内容已安装到当前实例的 skills 目录并被技能目录即时识别。
+  说明：上游技能依赖 `references/`、`prompts/`、`templates/`、`scripts/` 等附带文件，而本包每个技能只打包单个 `SKILL.md`，故按规范做了**压缩改写**（保留原则与流程，损失细节）；上游仓库另含可执行代码（`hooks/`、`scripts/`、`index.js`），本包**只转录其 Markdown，不引入也不执行任何代码**。
+
 ## 2.3.3（新增 karpathy-guidelines 技能）
 
 ### 变更
