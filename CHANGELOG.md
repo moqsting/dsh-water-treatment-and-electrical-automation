@@ -4,6 +4,22 @@
 
 > 作者：moqsting（GitHub）
 
+## 2.3.7（离线可导入：依赖全部 vendored）
+
+### 变更
+
+- **14 个插件依赖全部 vendored**：把 7 个 git 插件（workbench、tender、calculator、cad、wps、office、electro-lab）与 7 个 npm 插件的 tarball 放进 `.dspack` 根目录的 `vendor/`，并在 manifest 的 `vendored{}` 里按规范 v5 §12 声明（`version`/`sha256`/`size`/`path`/`reason`）。
+  为什么：此前依赖靠导入时现场从 GitHub 与 npm registry 拉取——**无代理环境装不上或极慢**（实测本机 GitHub 直连为连接超时、npm registry 慢）。导入端遇到 vendored 条目会把 tarball 落到 `vendor-blobs/` 并把依赖 spec 改写成 `file:vendor-blobs/...`，**全程零网络**，无 VPN 机器也能完整导入。
+  如何验证：`setup/make-dspack.py` 自检新增 4 条断言并全 PASS——vendored 覆盖全部 14 个依赖；五字段合规（`path` 在 `vendor/` 下且 `.tgz`、`version` 与 `dependencies` 一致、`sha256`/`size`/`reason` 合法）；ZIP 的 `vendor/` 与 vendored 登记一一对应（规范：未登记即拒装）；vendor 内每个 tarball 的 `sha256` 与 `size` 全部匹配。
+  体积：`.dspack` 从 116 KB 增至 **14.70 MB**（14 个 tarball 合计 14.59 MB）。
+- 生成物同时落在 `release/vendor/`（14 个 `.tgz`），既随 `.dspack` 分发，也可单独取用。
+
+### 说明
+
+- tender 的 `lib/` 不在其源码仓库里（靠 `prepare` 现场构建），而 `prepare` **对 `file:` 形式的依赖不触发**——若直接打源码包会得到缺 `lib/` 的坏包。本版已在本地装依赖、跑 `tsc`+`tsdown` 构建后再打包，并已开包确认含 `package/lib/index.js`、`package/lib/client.js`。
+- workbench 的 `files` 只发 `src/`（不发 `lib/`），源码包即可用，已确认含 `package/src/*.js`。
+- vendor 化只覆盖**直接依赖**；其**传递依赖**仍由包管理器按 registry 解析（国内可用 npmmirror；这一层不在本次范围）。
+
 ## 2.3.6（下载源加国内镜像）
 
 ### 变更

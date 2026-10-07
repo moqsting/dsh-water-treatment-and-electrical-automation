@@ -9,9 +9,12 @@
   home/      → $DSH_HOME/（技能 + AGENTS.md）
   pydeps 重内容走 manifest files[]（path+sha256+size+urls），不进 ZIP。
 
-插件依赖（对照官方样例 desktop-pack 的做法：依赖用 npm 精确版本，不打 vendored）：
-  - 工作台按钮插件（npm 未发布）→ git commit sha 坐标（唯一 git 依赖）
-  - 4 个外来插件 + 官方 @dsh-packforge/dsh-pack-plugin（npm 已发布）→ npm 精确版本
+插件依赖（离线可导入：7 个 git 插件 + 7 个 npm 插件全部 vendored）：
+  - 全部依赖的 npm 包 tarball 放 ZIP 根 vendor/ 下，并在 manifest vendored{} 声明
+    （manifest v5 §12：version/sha256/size/path[/reason]；path 必须在 vendor/ 下且 .tgz，
+     且 vendor/ 内每个文件都必须登记）。导入端把 tarball 落到 vendor-blobs/ 并把依赖 spec
+     改写成 file:vendor-blobs/...，全程零网络——无 VPN 机器也能完整导入。
+  - git 坐标的 vendored[].version 必须等于 dependencies 里钉死的那个 commit sha（规范硬约束）。
   - koffi（native 传递依赖）→ pnpm-workspace.yaml 的 allowBuilds 放行 install 脚本
 
 用法：py -3 setup\\make-dspack.py [--out <目录>]
@@ -22,6 +25,7 @@ import json
 import os
 import re
 import sys
+import tarfile
 import zipfile
 from pathlib import Path
 
@@ -29,7 +33,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PACK_ROOT = SCRIPT_DIR.parent
 
 NAME = "water-treatment-and-electrical-automation"
-VERSION = "2.3.6"
+VERSION = "2.3.7"
 PROFILE_NAME = "wet-automation"
 DSH_VERSION = "0.2.0-rc.2"
 
@@ -71,7 +75,7 @@ NPM_PLUGINS = {
     "@dsh-packforge/dsh-pack-plugin": "0.3.5",   # 官方规范导入器（整合包必备）
 }
 
-PYDEP_TARBALL = "pydeps-2.3.6.tar.gz"
+PYDEP_TARBALL = "pydeps-2.3.7.tar.gz"
 PYDEP_URL = ("https://github.com/moqsting/dsh-water-treatment-and-electrical-automation/"
              f"releases/download/v{VERSION}/{PYDEP_TARBALL}")
 
@@ -136,6 +140,55 @@ def dependencies_map() -> dict:
     }
 
 
+VENDOR_DIR = PACK_ROOT / "release" / "vendor"
+
+
+def coord_pkg_name(coord: str) -> str:
+    """依赖坐标 → npm 包名（git 坐标取仓库名，npm 坐标原样）。"""
+    return coord.rsplit("/", 1)[-1] if coord.startswith("github:") else coord
+
+
+def vendor_tgz_identity(path: Path):
+    """读 tarball 内 package/package.json 的 (name, version)。"""
+    with tarfile.open(path, "r:gz") as tf:
+        member = next((m for m in tf.getmembers() if m.name.endswith("package/package.json")), None)
+        if member is None:
+            raise SystemExit(f"{path.name} 内找不到 package/package.json")
+        fh = tf.extractfile(member)
+        pkg = json.loads(fh.read().decode("utf-8"))
+    return pkg.get("name", ""), pkg.get("version", "")
+
+
+def vendored_map() -> dict:
+    """按 release/vendor/*.tgz 生成 manifest v5 §12 的 vendored{}（坐标 → 五字段）。
+
+    version 必须与 dependencies 钉死的值一致：git 坐标是那个 40 位 commit sha，
+    npm 坐标是精确版本。规范校验不通过会导致整包"拒装"。
+    """
+    if not VENDOR_DIR.is_dir():
+        raise SystemExit(f"缺少 {VENDOR_DIR}——请先用 npm pack 准备各依赖的 .tgz")
+    by_name = {}
+    for f in sorted(VENDOR_DIR.glob("*.tgz")):
+        name, _ver = vendor_tgz_identity(f)
+        if not name:
+            raise SystemExit(f"{f.name} 的 package.json 缺 name")
+        by_name[name] = f
+    out = {}
+    for coord, version in dependencies_map().items():
+        nm = coord_pkg_name(coord)
+        f = by_name.get(nm)
+        if f is None:
+            raise SystemExit(f"vendor/ 缺依赖 {coord}（期望包名 {nm}）")
+        out[coord] = {
+            "version": version,
+            "sha256": sha256_of(f),
+            "size": f.stat().st_size,
+            "path": f"vendor/{f.name}",
+            "reason": "local-modified" if coord.startswith("github:") else "explicit",
+        }
+    return out
+
+
 def build_manifest() -> dict:
     tar = PACK_ROOT / "release" / PYDEP_TARBALL
     if not tar.is_file():
@@ -158,6 +211,7 @@ def build_manifest() -> dict:
         "profileName": PROFILE_NAME,
         "bundles": bundles_list(),
         "dependencies": dependencies_map(),
+        "vendored": vendored_map(),
         "files": files,
     }
 
@@ -251,7 +305,24 @@ def self_check(m: dict, zip_path: Path) -> tuple:
         chk(bool(re.match(r"^[0-9a-f]{40}$", dep or "")), f"dependencies 的 {coord} 为 40 位 commit sha")
     chk(all(re.match(r"^\d+\.\d+\.\d+$", m["dependencies"].get(k, "")) for k in NPM_PLUGINS),
         "dependencies 的 npm 插件为精确版本")
-    chk("vendored" not in m, "无 vendored（npm 精确版本；2 个 git 依赖由 allowBuilds 放行构建）")
+    vm = m.get("vendored")
+    _ndeps = len(m["dependencies"])
+    chk(isinstance(vm, dict) and len(vm) == _ndeps,
+        f"vendored 覆盖全部 {_ndeps} 个依赖（实际 {len(vm) if isinstance(vm, dict) else '无'}）")
+    _bad = []
+    for _coord, _e in (vm or {}).items():
+        if not re.match(r"^vendor/[^/]+\.tgz$", str(_e.get("path", ""))):
+            _bad.append(f"{_coord}.path")
+        if _e.get("version") != m["dependencies"].get(_coord):
+            _bad.append(f"{_coord}.version")
+        if not re.match(r"^[0-9a-f]{64}$", str(_e.get("sha256", ""))):
+            _bad.append(f"{_coord}.sha256")
+        if not (isinstance(_e.get("size"), int) and _e["size"] > 0):
+            _bad.append(f"{_coord}.size")
+        if _e.get("reason") not in ("upstream-missing", "unpublished", "local-modified", "explicit"):
+            _bad.append(f"{_coord}.reason")
+    chk(not _bad, "vendored 五字段合规（path/version/sha256/size/reason）"
+        + (f"　不合格：{_bad[:3]}" if _bad else ""))
     chk(len(m["files"]) >= 1, "files[] 非空（pydeps 重内容）")
     if m["files"]:
         e = m["files"][0]
@@ -272,8 +343,17 @@ def self_check(m: dict, zip_path: Path) -> tuple:
         chk("dspack.json" in names and "manifest.json" in names, "ZIP 根含 dspack.json + manifest.json")
         chk("package.json" in names and "pnpm-workspace.yaml" in names,
             "ZIP 根含机器文件 package.json + pnpm-workspace.yaml")
-        chk(all(n.startswith("overrides/") or n.startswith("home/") for n in inner),
-            "用户文件均在 overrides/ 或 home/ 内")
+        chk(all(n.startswith("overrides/") or n.startswith("home/") or n.startswith("vendor/")
+                for n in inner),
+            "用户文件均在 overrides/、home/ 或 vendor/ 内")
+        _vend = sorted(n for n in names if n.startswith("vendor/"))
+        _want = sorted(e["path"] for e in (vm or {}).values())
+        chk(_vend == _want, f"ZIP 的 vendor/ 与 vendored{{}} 登记一一对应（{len(_vend)} 个，规范：未登记即拒装）")
+        _mism = [e["path"] for e in (vm or {}).values()
+                 if len(z.read(e["path"])) != e["size"]
+                 or hashlib.sha256(z.read(e["path"])).hexdigest() != e["sha256"]]
+        chk(not _mism, "vendor/ 内 tarball 的 sha256 与 size 全部匹配"
+            + (f"　不符：{_mism[:2]}" if _mism else ""))
         chk("overrides/wta/ui/server.py" in names, "overrides/wta/ui/server.py 存在（工作台）")
         chk("home/AGENTS.md" in names, "home/AGENTS.md 存在（全局指令）")
         skills = [n for n in names if n.startswith("home/skills/") and n.endswith("SKILL.md")]
@@ -316,6 +396,13 @@ def main():
         if agents.is_file():
             z.write(agents, "home/AGENTS.md")
             print("  home/AGENTS.md: 已打包")
+        # vendor/ → ZIP 根：manifest vendored{} 指向的依赖 tarball（离线导入用）。
+        # 规范硬约束：vendor/ 内只允许 .tgz，且每个文件都必须在 vendored{} 里登记，否则导入端拒装。
+        vm = manifest["vendored"]
+        for entry in vm.values():
+            rel = entry["path"]
+            z.write(VENDOR_DIR / Path(rel).name, rel)
+        print(f"  vendor/: 已打包 {len(vm)} 个依赖 tarball（离线导入）")
 
     ok, lines = self_check(manifest, dspack)
     for line in lines:
